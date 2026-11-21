@@ -35,87 +35,83 @@ function puzEnd() {
     '<button class="btn big" data-act="g_puz">Puzzle lagi</button>');
 }
 
-/* ---------- Saklar Lampu (rangkaian listrik) ---------- */
-const TC = { P: [50, 46], N: [50, 174], S1: [120, 174], S2: [210, 174], L1: [225, 118], L2: [285, 118] };
+/* ---------- Saklar Lampu 3D: cocokkan warna kabel, saklar, dan lampu ---------- */
+const KC = [['Merah', '#ff4d4d'], ['Kuning', '#ffd23f'], ['Hijau', '#3ddc84'], ['Biru', '#4aa3ff']];
 let K = null;
 function circStart() {
-  const young = P().age < 7;
-  K = { rs: shuffle(young ? [3, 3, 3] : [3, 6, 9]), i: 0, fails: 0 };
+  K = { rs: P().age < 7 ? [1, 2] : [1, 2, 3, 4], i: 0, fails: 0 };
   circRound();
 }
 function circRound() {
-  K.rating = K.rs[K.i]; K.volt = null; K.wires = []; K.sel = null; K.sw = false; K.state = ''; K.busy = false;
-  K.msg = 'Pilih baterai, pasang kabel, lalu tekan saklar!';
-  render(shell(`Saklar Lampu (${K.i + 1}/${K.rs.length})`, `<p class="hint">Baca label: lampu ini butuh baterai <b>${K.rating}V</b>.</p>
-    <div class="opts" style="grid-template-columns:repeat(4,1fr)">${[1.5, 3, 6, 9].map(v => `<button class="opt" data-act="batt" data-v="${v}">${v}V</button>`).join('')}</div>
-    <div id="kv"></div>`));
-  say2('Pasang kabel dari baterai ke saklar dan lampu, lalu tekan saklar!');
+  const n = K.rs[K.i];
+  K.n = n; K.cs = shuffle(KC).slice(0, n); K.lamp = shuffle([...Array(n).keys()]);   // K.lamp[j] = warna lampu di posisi j
+  K.wire = Array(n).fill(-1); K.on = Array(n).fill(false); K.boom = -1; K.sel = null; K.busy = false; K.done = false;
+  K.msg = 'Ketuk bulatan saklar, lalu bulatan lampu untuk memasang kabel.';
+  render(shell(`Saklar Lampu (${K.i + 1}/${K.rs.length})`, `<p class="hint">Ada <b>${n} saklar</b>. Sambungkan tiap saklar ke lampu yang <b>warnanya sama</b>, lalu tekan saklarnya!</p>
+    <div id="kb" class="kb"></div><p id="km" class="fb"></p><div id="kx"></div>`));
+  say2(`Ada ${n} saklar. Sambungkan ke lampu yang warnanya sama, lalu tekan saklar!`);
   circDraw();
 }
 function circDraw() {
-  const lit = K.state === 'lit', dim = K.state === 'dim', boom = K.state === 'boom';
-  const wires = K.wires.map(([a, b], i) => `<line x1="${TC[a][0]}" y1="${TC[a][1]}" x2="${TC[b][0]}" y2="${TC[b][1]}" class="wire" data-act="unwire" data-i="${i}"/>`).join('');
-  const term = k => `<circle cx="${TC[k][0]}" cy="${TC[k][1]}" r="11" class="term ${K.sel === k ? 'sel' : ''}" data-act="term" data-t="${k}"/>`;
-  const tip = K.sw ? TC.S2 : [TC.S2[0] - 8, TC.S2[1] - 40];
-  $('#kv').innerHTML = `<svg viewBox="0 0 320 220" class="circ">
-    <rect x="25" y="62" width="50" height="96" rx="10" fill="#3a3f5c" stroke="#aab"/><text x="50" y="116" text-anchor="middle" class="ct big">${K.volt ? K.volt + 'V' : '?'}</text>
-    <text x="68" y="50" class="ct">+</text><text x="68" y="182" class="ct">−</text>
-    <line x1="${TC.S1[0]}" y1="${TC.S1[1]}" x2="${tip[0]}" y2="${tip[1]}" stroke="#ddd" stroke-width="7" stroke-linecap="round"/><text x="165" y="208" text-anchor="middle" class="ct">Saklar</text>
-    ${boom ? '<text x="255" y="90" text-anchor="middle" font-size="64">💥</text>' : `<circle cx="255" cy="70" r="32" fill="${lit ? '#ffe34a' : dim ? '#9c8f55' : '#4a4f70'}" stroke="#ccd" stroke-width="3" ${lit ? 'style="filter:drop-shadow(0 0 16px #ffe34a)"' : ''}/><text x="255" y="77" text-anchor="middle" class="ct" fill="${lit ? '#3a2a00' : '#fff'}">${K.rating}V</text>`}
-    <text x="255" y="140" text-anchor="middle" class="ct">Lampu</text>
-    ${wires}${Object.keys(TC).map(term).join('')}</svg>
-    <p class="fb">${esc(K.msg)}</p>
-    ${boom ? '<button class="btn" data-act="ktry">Coba lagi 🔧</button>' : lit ? '<button class="btn big" data-act="knext">Lanjut ▶</button>' : `<button class="btn big" data-act="ksw">🔘 ${K.sw ? 'Matikan saklar' : 'Tekan saklar'}</button><p class="small">Ketuk dua titik untuk memasang kabel. Ketuk kabel untuk melepasnya.</p>`}`;
-  app.querySelectorAll('[data-act="batt"]').forEach(b => b.classList.toggle('picked', +b.dataset.v === K.volt));
+  const rows = K.cs.map((c, i) => {
+    const l = K.cs[K.lamp[i]], lit = K.wire.some((w, s) => w === i && K.on[s]);
+    const cls = K.boom === i ? 'boom' : lit ? 'lit' : '';
+    return `<div class="krow"><div class="ksw" style="--k:${c[1]}"><button class="lever ${K.on[i] ? 'on' : ''}" data-act="ksw" data-i="${i}" aria-label="Saklar ${c[0]}"><i></i></button>
+      <button class="plug ${K.sel === 's' + i ? 'sel' : ''}" data-act="term" data-k="s${i}" style="--k:${c[1]}" aria-label="Kabel saklar ${c[0]}"></button></div>
+      <div class="kl"><button class="plug ${K.sel === 'l' + i ? 'sel' : ''}" data-act="term" data-k="l${i}" style="--k:${l[1]}" aria-label="Kabel lampu ${l[0]}"></button>
+      <div class="bulb ${cls}" style="--k:${l[1]}">${cls === 'boom' ? '💥' : ''}</div></div></div>`;
+  }).join('');
+  const kb = $('#kb'); kb.innerHTML = '<svg id="kw"></svg>' + rows;
+  const br = kb.getBoundingClientRect();
+  const pt = k => { const r = kb.querySelector(`[data-k="${k}"]`).getBoundingClientRect(); return [r.left - br.left + r.width / 2, r.top - br.top + r.height / 2]; };
+  $('#kw').innerHTML = K.wire.map((j, i) => {
+    if (j < 0) return '';
+    const a = pt('s' + i), b = pt('l' + j), m = (a[0] + b[0]) / 2, d = `M${a[0]} ${a[1]} C${m} ${a[1]} ${m} ${b[1]} ${b[0]} ${b[1]}`;
+    return `<path class="wb" d="${d}"/><path class="wc" d="${d}" style="stroke:${K.cs[i][1]}"/><path class="wh" d="${d}"/>`;
+  }).join('');
+  $('#km').textContent = K.msg;
+  $('#kx').innerHTML = K.boom >= 0 ? '<button class="btn" data-act="ktry">Coba lagi 🔧</button>'
+    : K.done ? '<button class="btn big" data-act="knext">Lanjut ▶</button>'
+    : '<button class="btn ghost" data-act="kclear">🧹 Lepas semua kabel</button>';
 }
-function circTerm(t) {
+function circTerm(k) {
   if (K.busy) return;
-  if (!K.sel) K.sel = t;
-  else if (K.sel === t) K.sel = null;
+  if (K.sel === k) K.sel = null;
+  else if (!K.sel || K.sel[0] === k[0]) K.sel = k;
   else {
-    const a = K.sel, b = t;
-    if (!K.wires.some(w => (w[0] === a && w[1] === b) || (w[0] === b && w[1] === a))) K.wires.push([a, b]);
-    K.sel = null; beep(600, .08);
+    const si = +(K.sel[0] === 's' ? K.sel : k).slice(1), lj = +(K.sel[0] === 'l' ? K.sel : k).slice(1);
+    K.wire.forEach((w, x) => { if (w === lj) { K.wire[x] = -1; K.on[x] = false; } });
+    K.wire[si] = lj; K.on[si] = false; K.sel = null; K.msg = 'Kabel terpasang. Sekarang tekan saklarnya!'; beep(600, .08);
   }
   circDraw();
 }
-function circReach(edges) {
-  const adj = {};
-  edges.forEach(([a, b]) => { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); });
-  const seen = new Set(['P']), q = ['P'];
-  while (q.length) { const x = q.pop(); (adj[x] || []).forEach(y => { if (!seen.has(y)) { seen.add(y); q.push(y); } }); }
-  return seen.has('N');
-}
-function circSwitch() {
+function circSwitch(i) {
   if (K.busy) return;
-  if (K.sw) { K.sw = false; K.state = ''; K.msg = 'Saklar mati. Arus berhenti mengalir.'; return circDraw(); }
-  if (!K.volt) { K.msg = 'Pilih baterai dulu ya 🔋'; return circDraw(); }
-  const base = K.wires.concat([['S1', 'S2']]);
-  K.sw = true;
-  if (circReach(base)) {
-    K.state = 'boom'; K.busy = true; K.fails++;
-    K.msg = 'KORSLETING! Arus mengambil jalan pintas dari + ke − tanpa melewati lampu, kabel jadi panas dan meledak. Arus harus melewati lampu.';
-  } else if (!circReach(base.concat([['L1', 'L2']]))) {
-    K.sw = false;
-    K.msg = 'Lampu belum menyala. Arus hanya mengalir kalau rangkaian tertutup: kutub + → saklar → lampu → kutub −.';
-  } else if (K.volt > K.rating) {
-    K.state = 'boom'; K.busy = true; K.fails++;
-    K.msg = `Baterai ${K.volt}V terlalu kuat untuk lampu ${K.rating}V. Lampu menerima terlalu banyak arus dan meledak! Cocokkan tegangan dengan label lampu.`;
-  } else if (K.volt < K.rating) {
-    K.state = 'dim'; K.msg = `Lampu redup karena baterai ${K.volt}V kurang kuat. Ganti baterai yang sesuai label lampu.`;
+  if (K.on[i]) { K.on[i] = false; K.msg = 'Saklar dimatikan, lampu padam.'; return circDraw(); }
+  const j = K.wire[i];
+  if (j < 0) { K.msg = `Saklar ${K.cs[i][0]} belum tersambung ke lampu. Pasang kabel dulu!`; beep(200, .1); return circDraw(); }
+  const lamp = K.cs[K.lamp[j]];
+  if (K.lamp[j] === i) {
+    K.on[i] = true; beep(784, .25); K.msg = `Lampu ${lamp[0]} menyala! ✨`;
+    if (K.on.every(Boolean)) {
+      K.busy = K.done = true;
+      K.msg = K.n === 1 ? 'Hebat! Satu saklar mengendalikan satu lampu lewat satu rangkaian tertutup. 🎉'
+        : `Hebat! Tiap saklar punya rangkaiannya sendiri, jadi ${K.n} lampu bisa dinyalakan satu per satu. 🎉`;
+    }
   } else {
-    K.state = 'lit'; K.busy = true; K.sel = null;
-    K.msg = 'Menyala! Rangkaian tertutup dan tegangan baterai cocok dengan lampu. 💡';
+    K.boom = j; K.busy = true; K.fails++; beep(120, .5);
+    K.msg = `DUAR! Kabel ${K.cs[i][0]} masuk ke lampu ${lamp[0]}. Warna berbeda berarti rangkaian berbeda: arus tidak cocok, terjadi korsleting dan lampu meledak.`;
+    say2('Duar! Warna kabelnya beda. Coba lagi ya.');
   }
-  if (K.state === 'boom') { beep(120, .5); say2('Duar! Coba lagi ya.'); } else if (K.state === 'lit') { beep(784, .3); }
   circDraw();
 }
 function circEnd() {
-  const stars = K.fails === 0 ? 3 : K.fails <= 3 ? 2 : 1;
+  const stars = K.fails === 0 ? 3 : K.fails <= 2 ? 2 : 1;
   reward('saklar', { iq: 3, aq: Math.min(K.fails, 5) + 1, stars });
-  result('Semua lampu menyala!', stars, 'Ingat tiga aturan listrik: (1) rangkaian harus tertutup, (2) tegangan harus cocok dengan alat, (3) jangan buat jalan pintas (korsleting). Listrik asli berbahaya, jangan dicoba tanpa orang dewasa.',
+  result('Semua lampu menyala!', stars, 'Ingat: arus listrik mengalir lewat rangkaian tertutup, dan setiap saklar harus tersambung ke lampunya yang tepat. Salah sambung bisa korsleting. Listrik asli berbahaya, jangan dicoba tanpa orang dewasa.',
     '<button class="btn big" data-act="g_sak">Main lagi</button>');
 }
+addEventListener('resize', () => { if (K && $('#kb') && !K.done) circDraw(); });
 
 /* ---------- Planetarium mini ---------- */
 const SUN = ['Matahari', '#ffd54a', 'Bintang terdekat dengan Bumi, bukan planet. Cahaya dan panasnya membuat kita bisa hidup.'];
@@ -252,11 +248,10 @@ function engLearn() {
 Object.assign(A, {
   g_puz: gate(puzMenu), puzgo: d => puzStart(+d.n), puzmv: d => puzMove(+d.i),
   g_sak: gate(circStart),
-  batt(d) { if (!K || K.busy) return; K.volt = +d.v; K.sw = false; K.state = ''; K.msg = `Baterai ${K.volt}V dipilih. Sambungkan kabel!`; circDraw(); },
-  term(d) { circTerm(d.t); },
-  unwire(d) { if (K.busy) return; K.wires.splice(+d.i, 1); K.sw = false; K.state = ''; circDraw(); },
-  ksw: circSwitch,
-  ktry() { circRound(); },
+  term(d) { circTerm(d.k); },
+  ksw(d) { circSwitch(+d.i); },
+  kclear() { if (!K.busy) { K.wire.fill(-1); K.on.fill(false); K.sel = null; K.msg = 'Kabel dilepas. Pasang lagi!'; circDraw(); } },
+  ktry() { K.wire = K.wire.map(w => w === K.boom ? -1 : w); K.boom = -1; K.busy = false; K.msg = 'Coba lagi! Cocokkan warna kabel dengan warna lampu.'; circDraw(); },
   knext() { K.i++; if (K.i >= K.rs.length) circEnd(); else circRound(); },
   g_plan: gate(planStart),
   plansel(d) { planSel(+d.i); },

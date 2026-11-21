@@ -11,9 +11,14 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <radialGradient id="clayGold" cx=".35" cy=".28" r=".9"><stop offset="0" stop-color="#fff3a8"/><stop offset=".45" stop-color="#ffd54a"/><stop offset="1" stop-color="#ffab00"/></radialGradient>
+    <filter id="clayBlur"><feGaussianBlur stdDeviation="3"/></filter></defs></svg>
   <canvas id="sky" aria-hidden="true"></canvas>
   <div id="app" aria-live="polite"></div>
   <noscript>Aplikasi ini membutuhkan JavaScript.</noscript>

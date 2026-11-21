@@ -88,12 +88,17 @@ function hero(p, s = 120) {
     <circle cx="50" cy="44" r="2" fill="#222"/><circle cx="70" cy="44" r="2" fill="#222"/>
     <path d="M52 56 Q60 63 68 56" stroke="#a24b3b" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
 }
+const STAR = Array.from({ length: 10 }, (_, k) => { const r = k % 2 ? 23 : 45, a = (-90 + 36 * k) * Math.PI / 180; return (60 + r * Math.cos(a)).toFixed(1) + ',' + (64 + r * Math.sin(a)).toFixed(1); }).join(' ');
 function kiki(s = 80) {
-  return `<svg viewBox="0 0 100 100" width="${s}" height="${s}" aria-hidden="true">
-    <polygon points="50,6 61,36 94,38 68,58 77,90 50,72 23,90 32,58 6,38 39,36" fill="#ffd54a" stroke="#f5a300" stroke-width="3" stroke-linejoin="round"/>
-    <circle cx="41" cy="52" r="4" fill="#3a2a00"/><circle cx="59" cy="52" r="4" fill="#3a2a00"/>
-    <path d="M42 62 Q50 70 58 62" stroke="#3a2a00" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <circle cx="35" cy="60" r="4" fill="#ff9aa2" opacity=".7"/><circle cx="65" cy="60" r="4" fill="#ff9aa2" opacity=".7"/></svg>`;
+  return `<svg class="clay-star" viewBox="0 0 120 120" width="${s}" height="${s}" aria-hidden="true">
+    <ellipse cx="60" cy="113" rx="32" ry="6" fill="#000" opacity=".3"/>
+    <polygon points="${STAR}" fill="#d98a00" stroke="#d98a00" stroke-width="13" stroke-linejoin="round" transform="translate(0 6)"/>
+    <polygon points="${STAR}" fill="url(#clayGold)" stroke="url(#clayGold)" stroke-width="13" stroke-linejoin="round"/>
+    <ellipse cx="42" cy="36" rx="13" ry="6" fill="#fff" opacity=".55" transform="rotate(-35 42 36)" filter="url(#clayBlur)"/>
+    <circle cx="49" cy="64" r="5" fill="#4a2e00"/><circle cx="71" cy="64" r="5" fill="#4a2e00"/>
+    <circle cx="47.5" cy="62" r="1.6" fill="#fff"/><circle cx="69.5" cy="62" r="1.6" fill="#fff"/>
+    <path d="M51 74 Q60 82 69 74" stroke="#4a2e00" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <circle cx="42" cy="73" r="4.5" fill="#ff8fa3" opacity=".75"/><circle cx="78" cy="73" r="4.5" fill="#ff8fa3" opacity=".75"/></svg>`;
 }
 const shell = (title, body) => `<header class="bar"><button class="icon" data-act="hub" aria-label="Kembali">←</button><h2>${title}</h2></header><main class="game">${body}</main>`;
 
@@ -494,7 +499,7 @@ function screenParent() {
       <p>⭐ ${p.stars} • Main ${p.plays}× • Hari ini ${Math.round(usedMin(p))}/${allowedMin(p)} mnt • Misi nyata ${dn}</p>
       <div class="spark" title="Menit main 7 hari terakhir">${w.map(m => `<span style="height:${Math.round(m / mx * 100)}%"></span>`).join('')}</div>
       <p class="small">Menit main 7 hari terakhir (paling kanan = hari ini)</p>
-      <button class="btn mini" data-act="bonus" data-id="${p.id}">+10 menit hari ini</button></article>`;
+      <button class="btn mini" data-act="bonus" data-id="${p.id}">+10 menit hari ini</button><button class="btn mini" data-act="resetscore" data-id="${p.id}">↺ Reset skor</button></article>`;
   }).join('');
   render(`<header class="bar"><button class="icon" data-act="home" aria-label="Kembali">←</button><h2>Dashboard Orang Tua</h2></header>
     ${cards}
@@ -542,7 +547,14 @@ async function afterLogin() {
 }
 
 /* ---------- aksi (delegasi klik) ---------- */
-const gate = fn => () => { if (isLocked()) screenLock(); else fn(); };
+let lvl = 0;   // 0 = beranda, 1 = menu/orang tua, 2 = game
+function setLvl(n) { while (lvl < n) history.pushState({ l: ++lvl }, ''); }
+window.addEventListener('popstate', e => {
+  lvl = (e.state && e.state.l) || 0;
+  if (!db || !db.profiles || (Cloud.enabled && !Cloud.on())) return;
+  if (lvl >= 1 && cur) screenHub(); else { lvl = 0; screenHome(); }
+});
+const gate = fn => () => { if (isLocked()) screenLock(); else { fn(); setLvl(2); } };
 const A = {
   async setupDone() {
     const pin = $('#pin1').value;
@@ -552,18 +564,18 @@ const A = {
       rara: newProfile('rara', 'Super Rara', 6, '#ff4f9a') } };
     save(); screenHome();
   },
-  home: screenHome,
+  home() { if (lvl > 0) history.go(-lvl); else screenHome(); },
   login() { authDo((e, p) => Cloud.signIn(e, p)); },
   register() { authDo((e, p) => Cloud.register(e, p)); },
   async logout() { await Cloud.signOut(); screenAuth(); },
-  pick(d) { cur = d.id; startTick(); screenHub(); },
-  hub() { if (cur) screenHub(); else screenHome(); },
+  pick(d) { cur = d.id; startTick(); screenHub(); setLvl(1); },
+  hub() { if (!cur) return screenHome(); if (lvl > 1) history.go(1 - lvl); else screenHub(); },
   g_memory: gate(() => memoryStart()),
   g_simon: gate(simonStart),
   g_eng: gate(engStart),
   g_emo: gate(emoStart),
-  g_mis: screenMissions,
-  g_mis_force: screenMissions,
+  g_mis() { screenMissions(); setLvl(2); },
+  g_mis_force() { screenMissions(); setLvl(2); },
   memnext: d => gate(() => memoryStart(+d.lv))(),
   flip(d, b) { memoryFlip(+d.i, b); },
   pad(d) { simonPad(+d.i); },
@@ -571,12 +583,18 @@ const A = {
   emopick(d, b) { emoPick(+d.n, b); },
   emonext: emoNext,
   mis(d) { missionTap(+d.i); },
-  parent() { askPin(screenParent); },
+  parent() { setLvl(1); askPin(screenParent); },
   parentBack() { screenParent(); },
   async pinok() {
     const h = await hashPin($('#pin').value);
     if (h === db.pinHash) { const cb = pinCb; pinCb = null; if (cb) cb(); }
     else { $('#msg').textContent = 'PIN salah'; }
+  },
+  resetscore(d) {
+    const p = db.profiles[d.id];
+    if (!confirm(`Reset skor ${p.name}? IQ, EQ, AQ, bintang, dan riwayat main akan kembali ke 0.`)) return;
+    p.iq = p.eq = p.aq = p.stars = p.plays = 0; p.log = [];
+    save(); Cloud.push(d.id); screenParent();
   },
   bonus(d) { const p = db.profiles[d.id], k = today(); p.bonus[k] = (p.bonus[k] || 0) + 10; save(); screenParent(); },
   newpin() { screenNewPin(); },
@@ -624,6 +642,14 @@ app.addEventListener('keydown', e => {
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; const b = $('[data-act="install"]'); if (b) b.hidden = false; });
 
 /* ---------- mulai ---------- */
+function splash() {
+  const d = document.createElement('div'); d.id = 'splash';
+  d.innerHTML = `${kiki(200)}<h1>Penjaga Bintang</h1><p>by Nexora</p>`;
+  document.body.appendChild(d);
+  setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 600); }, 2400);
+}
+history.replaceState({ l: 0 }, '');
+splash();
 (async function boot() {
   if (!Cloud.enabled) return (!db || !db.profiles) ? screenSetup() : screenHome();
   const u = await Cloud.ready();
