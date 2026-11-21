@@ -234,7 +234,7 @@ function screenHub() {
       <button class="tile t1" data-act="g_memory">🧠<b>Memori Bintang</b><small>Fokus &amp; ingatan</small></button>
       <button class="tile t2" data-act="g_simon">🌟<b>Pola Bintang</b><small>Konsentrasi &amp; gigih</small></button>
       <button class="tile t6" data-act="g_puz">🧩<b>Puzzle Geser</b><small>3×3, 4×4, 5×5</small></button>
-      <button class="tile t7" data-act="g_sak">💡<b>Saklar Lampu</b><small>Listrik &amp; rangkaian</small></button>
+      <button class="tile t7" data-act="g_sak">💡<b>Saklar Lampu</b><small>6 game listrik</small></button>
     </div>
     <h3 class="sec">🔤 Bahasa &amp; Hati</h3>
     <div class="menu">
@@ -548,10 +548,13 @@ async function afterLogin() {
 
 /* ---------- aksi (delegasi klik) ---------- */
 let lvl = 0;   // 0 = beranda, 1 = menu/orang tua, 2 = game
+let lvl2Back = null;   // fungsi untuk kembali ke submenu game (mis. menu Saklar) saat swipe kembali
 function setLvl(n) { while (lvl < n) history.pushState({ l: ++lvl }, ''); }
 window.addEventListener('popstate', e => {
   lvl = (e.state && e.state.l) || 0;
   if (!db || !db.profiles || (Cloud.enabled && !Cloud.on())) return;
+  if (lvl === 2 && lvl2Back && cur) return lvl2Back();
+  lvl2Back = null;
   if (lvl >= 1 && cur) screenHub(); else { lvl = 0; screenHome(); }
 });
 const gate = fn => () => { if (isLocked()) screenLock(); else { fn(); setLvl(2); } };
