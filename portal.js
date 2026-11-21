@@ -127,8 +127,9 @@ function enterKid(id) {
 
 /* ================= DASHBOARD ANAK ================= */
 const GAMES = {
-  memory: ['g_memory', '🧠', 'Memori Bintang', 'Fokus & ingatan', 't1'], simon: ['g_simon', '🌟', 'Pola Bintang', 'Konsentrasi & gigih', 't2'],
-  puz: ['g_puz', '🧩', 'Puzzle Geser', '3×3, 4×4, 5×5', 't6'], mix: ['g_mix', '🎨', 'Campur Warna', 'Misi mencampur cat', 't11'],
+  memory: ['g_memory', '🧠', 'Memori Bintang', 'Warna, gambar, angka, huruf', 't1'], simon: ['g_simon', '🌟', 'Pola Bintang', '2×2 sampai 5×6', 't2'],
+  where: ['g_where', '🥥', 'Dimana Aku?', 'Tebak biji di tempurung', 't12'], maze: ['g_maze', '🌀', 'Labirin', 'Tarik garis ke finish', 't13'],
+  puz: ['g_puz', '🧩', 'Puzzle Geser', 'Angka, abjad, gambar, warna', 't6'], mix: ['g_mix', '🎨', 'Campur Warna', 'Misi mencampur cat', 't11'],
   eng: ['g_eng', '🔤', 'Tebak Kata Inggris', 'Belajar dulu, lalu soal', 't3'], emo: ['g_emo', '💗', 'Cerita Hati', 'Empati & emosi', 't4'],
   plan: ['g_plan', '🪐', 'Planetarium Mini', 'Tata surya', 't8'], rain: ['g_rain', '🌧️', 'Simulasi Hujan', 'Siklus air', 't9'],
   tanam: ['g_tanam', '🌱', 'Menanam Bibit', 'Tumbuhan', 't3'], trash: ['g_trash', '♻️', 'Buang Sampah', 'Organik, medis, dll', 't10'],
@@ -136,7 +137,7 @@ const GAMES = {
 };
 // Tambahkan game baru ke daftar `g` kategori yang sesuai (lihat GAMES di atas untuk format: aksi, ikon, judul, keterangan, warna).
 const CATS = [
-  { k: 'otak', e: '🧠', t: 'Game Otak', bg: 'linear-gradient(135deg,#7b5cff,#4a8bff)', g: ['memory', 'simon', 'puz'] },
+  { k: 'otak', e: '🧠', t: 'Game Otak', bg: 'linear-gradient(135deg,#7b5cff,#4a8bff)', g: ['memory', 'where', 'maze', 'puz', 'simon'] },
   { k: 'mat', e: '➕', t: 'Matematika', bg: 'linear-gradient(135deg,#ff7a59,#ffb347)', g: [] },
   { k: 'sains', e: '🔭', t: 'Simulasi Sains', bg: 'linear-gradient(135deg,#5f2c82,#49a09d)', g: ['plan', 'rain', 'tanam', 'trash', 'sak', 'mix'] },
   { k: 'bahasa', e: '🔤', t: 'Bahasa', bg: 'linear-gradient(135deg,#17b890,#4fd1c5)', g: ['eng'] },

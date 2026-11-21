@@ -4,7 +4,7 @@
   const c = document.getElementById('sky'); if (!c) return;
   const x = c.getContext('2d');
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let W, H, stars = [], comets = [], next = 1500;
+  let W, H, stars = [], comets = [], next = 300;
   function size() {
     const d = Math.min(devicePixelRatio || 1, 2);
     W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0);
@@ -37,8 +37,9 @@
     }
     x.globalAlpha = 1;
     if (!still && t > next) {
-      comets.push({ x: W * (.4 + Math.random() * .6), y: -20, vx: -(4 + Math.random() * 3), vy: 2.5 + Math.random() * 2 });
-      next = t + 3500 + Math.random() * 5000;
+      const n = Math.random() < .35 ? 2 : 1;   // kadang dua komet sekaligus
+      for (let i = 0; i < n; i++) comets.push({ x: W * (.3 + Math.random() * .8), y: -20 - Math.random() * 60, vx: -(4 + Math.random() * 4), vy: 2.5 + Math.random() * 2.5 });
+      next = t + 700 + Math.random() * 1500;
     }
     for (const m of comets) {
       const a = Math.atan2(m.vy, m.vx), tx = m.x - Math.cos(a) * 95, ty = m.y - Math.sin(a) * 95;

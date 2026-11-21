@@ -114,7 +114,7 @@ const Cloud = (() => {
       if (c.includes('invalid-email')) return 'Format email tidak valid';
       if (c.includes('network') || c === 'unavailable') return 'Tidak ada koneksi internet';
       if (c.includes('too-many')) return 'Terlalu banyak percobaan, coba lagi nanti';
-      if (c.includes('operation-not-allowed')) return 'Login anak belum aktif: aktifkan provider Anonymous di Firebase Authentication';
+      if (c.includes('operation-not-allowed') || c.includes('admin-restricted')) return 'Login anak belum aktif: aktifkan provider Anonymous di Firebase Authentication';
       if (c === 'permission-denied') return 'Izin ditolak. Pasang Firestore Rules terbaru (lihat firestore.rules)';
       if (c === 'code-failed') return 'Kode belum bisa dibuat. Pasang Firestore Rules terbaru, lalu coba lagi';
       return 'Gagal: ' + (c || 'coba lagi');

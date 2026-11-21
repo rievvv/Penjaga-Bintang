@@ -21,3 +21,6 @@ Sinkronisasi butuh internet; saat offline aplikasi tetap jalan dan mengirim data
 ## Mencoba
 `python3 -m http.server 8000` lalu buka http://localhost:8000 (untuk HP: hosting HTTPS, mis. Firebase Hosting / GitHub Pages).
 Setelah mengubah file, naikkan nilai `V` di `sw.js` agar cache diperbarui.
+## Game Otak (games3.js)
+5 game, masing-masing 5 level. Level 1 terbuka; menang di level N membuka level N+1 (disimpan di `p.lv`), dan bintang yang didapat = nomor level.
+Memori Bintang (5×5/5×5/5×7/5×8/5×10, kotak ganjil punya ⭐ bonus di tengah), Dimana Aku?, Labirin (soal tebakan ada di `QZ`), Puzzle Geser, Pola Bintang (2×2 sampai 5×6).
