@@ -65,7 +65,7 @@ function skWire(list) {
 
 /* 1. ON/OFF & Jembatan Arus */
 let J = null;
-const skScene = on => `<svg viewBox="0 0 320 150" class="sk"><rect x="8" y="50" width="44" height="50" rx="12" fill="#4a4f72"/><text x="30" y="84" text-anchor="middle" font-size="26">🔋</text>
+const skScene = on => `<svg viewBox="0 36 312 100" class="sk"><rect x="8" y="50" width="44" height="50" rx="12" fill="#4a4f72"/><text x="30" y="84" text-anchor="middle" font-size="26">🔋</text>
   <path class="w" d="M52 75H108"/><path class="w" d="M212 75H245"/>
   <g style="transform-origin:108px 75px;transform:rotate(${on ? 0 : -40}deg);transition:transform .35s"><rect x="108" y="68" width="104" height="14" rx="7" fill="#ffb347"/></g>
   <circle cx="108" cy="75" r="7" fill="#ddd"/><circle cx="212" cy="75" r="7" fill="#ddd"/>
@@ -85,44 +85,65 @@ function sk1Toggle() {
   if (J.step >= J.n) { J.busy = true; const tk = token; setTimeout(() => { if (tk === token) skEnd(1, 'Jembatan Arus selesai!', 3, 'Saklar di dinding bekerja seperti jembatan: ON menyambung jalur sehingga arus mengalir ke lampu, OFF memutusnya.', 2, 1); }, 2200); }
 }
 
-/* 2. Sambung Kabel Sesuai Warna */
+/* 2. Sambung Kabel Sesuai Warna (tahan jari, seret kabel) */
 let Wc = null;
-function sk2Start() { Wc = { rs: P().age < 7 ? [2, 3] : [2, 3, 4], i: 0, fails: 0 }; sk2Round(); }
+function sk2Start() { Wc = { rs: P().age < 7 ? [2, 3] : [2, 3, 4], i: 0, fails: 0, drag: null }; sk2Round(); }
 function sk2Round() {
   const n = Wc.rs[Wc.i];
-  Wc.cs = shuffle(KC).slice(0, n); Wc.r = shuffle([...Array(n).keys()]); Wc.m = Array(n).fill(-1); Wc.sel = null; Wc.zap = -1; Wc.msg = 'Ketuk terminal kiri, lalu terminal kanan yang warnanya sama.';
-  render(skShell(`Sambung Kabel (${Wc.i + 1}/${Wc.rs.length})`, '<p class="hint">Cocokkan warna dengan teliti. Salah warna = percikan ⚡</p><div id="kb" class="kb"><svg></svg></div><p id="km" class="fb"></p><div id="kx"></div>'));
-  skRe = sk2Draw; sk2Draw();
+  Wc.cs = shuffle(KC).slice(0, n); Wc.r = shuffle([...Array(n).keys()]); Wc.m = Array(n).fill(-1); Wc.zap = -1; Wc.drag = null;
+  Wc.msg = 'Tahan terminal, lalu seret kabelnya ke terminal yang warnanya sama.';
+  render(skShell(`Sambung Kabel (${Wc.i + 1}/${Wc.rs.length})`, '<p class="hint">Tahan &amp; seret kabel. Salah warna = percikan ⚡</p><div id="kb" class="kb"><svg></svg></div><p id="km" class="fb"></p><div id="kx"></div>'));
+  Wc.tk = token; skRe = sk2Draw; sk2Draw();
 }
 function sk2Draw() {
   const rows = Wc.cs.map((c, i) => {
     const rc = Wc.cs[Wc.r[i]];
-    return `<div class="krow"><div class="ksw"><span class="lb">${c[0]}</span><button class="plug ${Wc.sel === 's' + i ? 'sel' : ''} ${Wc.m[i] >= 0 ? 'ok' : ''}" data-act="sk2t" data-k="s${i}" style="--k:${c[1]}" aria-label="Kiri ${c[0]}"></button></div>
-      <div class="kl"><button class="plug ${Wc.sel === 'l' + i ? 'sel' : ''} ${Wc.m.includes(i) ? 'ok' : ''} ${Wc.zap === i ? 'zap' : ''}" data-act="sk2t" data-k="l${i}" style="--k:${rc[1]}" aria-label="Kanan ${rc[0]}"></button><span class="lb">${rc[0]}</span></div></div>`;
+    return `<div class="krow"><div class="ksw"><span class="lb">${c[0]}</span><button class="plug ${Wc.m[i] >= 0 ? 'ok' : ''}" data-d="s${i}" data-k="s${i}" style="--k:${c[1]}" aria-label="Kiri ${c[0]}"></button></div>
+      <div class="kl"><button class="plug ${Wc.m.includes(i) ? 'ok' : ''} ${Wc.zap === i ? 'zap' : ''}" data-d="l${i}" data-k="l${i}" style="--k:${rc[1]}" aria-label="Kanan ${rc[0]}"></button><span class="lb">${rc[0]}</span></div></div>`;
   }).join('');
   $('#kb').innerHTML = '<svg></svg>' + rows;
   skWire(Wc.m.map((j, i) => j < 0 ? null : ['s' + i, 'l' + j, Wc.cs[i][1], true]).filter(Boolean));
   $('#km').textContent = Wc.msg;
   $('#kx').innerHTML = Wc.m.every(j => j >= 0) ? '<button class="btn big" data-act="sk2n">Lanjut ▶</button>' : '';
 }
-function sk2Term(k) {
-  if (Wc.m.every(j => j >= 0)) return;
-  const i = +k.slice(1);
-  if ((k[0] === 's' && Wc.m[i] >= 0) || (k[0] === 'l' && Wc.m.includes(i))) return;
-  if (Wc.sel === k) Wc.sel = null;
-  else if (!Wc.sel || Wc.sel[0] === k[0]) Wc.sel = k;
+const sk2Xy = e => { const b = $('#kb').getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+function sk2Tw() {
+  const d = Wc.drag, kb = $('#kb'), br = kb.getBoundingClientRect(), i = +d.k.slice(1);
+  const r = kb.querySelector(`[data-k="${d.k}"]`).getBoundingClientRect(), p = [r.left - br.left + r.width / 2, r.top - br.top + r.height / 2], q = d.xy, m = (p[0] + q[0]) / 2;
+  const c = d.k[0] === 's' ? Wc.cs[i][1] : Wc.cs[Wc.r[i]][1], path = `M${p[0]} ${p[1]} C${m} ${p[1]} ${m} ${q[1]} ${q[0]} ${q[1]}`;
+  let g = kb.querySelector('#tw'); if (!g) { kb.querySelector('svg').insertAdjacentHTML('beforeend', '<g id="tw"></g>'); g = kb.querySelector('#tw'); }
+  g.innerHTML = `<path class="wb" d="${path}"/><path class="wc" d="${path}" style="stroke:${c}"/><path class="wh" d="${path}"/>`;
+}
+function sk2Pair(k1, k2) {
+  const a = k1[0] === 's' ? k1 : k2, b = k1[0] === 'l' ? k1 : k2, si = +a.slice(1), lj = +b.slice(1);
+  if (Wc.r[lj] === si) { Wc.m[si] = lj; Wc.msg = `Cocok! Kabel ${Wc.cs[si][0]} tersambung rapi. ✨`; beep(784, .2); }
   else {
-    const si = +(Wc.sel[0] === 's' ? Wc.sel : k).slice(1), lj = +(Wc.sel[0] === 'l' ? Wc.sel : k).slice(1);
-    Wc.sel = null;
-    if (Wc.r[lj] === si) { Wc.m[si] = lj; Wc.msg = `Cocok! Kabel ${Wc.cs[si][0]} tersambung rapi. ✨`; beep(784, .2); }
-    else {
-      Wc.fails++; Wc.zap = lj; beep(120, .3);
-      Wc.msg = `⚡ Percikan! ${Wc.cs[si][0]} tidak boleh disambung ke ${Wc.cs[Wc.r[lj]][0]}. Kabel yang tertukar bisa korsleting.`;
-      const tk = token; setTimeout(() => { if (tk === token) { Wc.zap = -1; sk2Draw(); } }, 800);
-    }
+    Wc.fails++; Wc.zap = lj; beep(120, .3);
+    Wc.msg = `⚡ Percikan! ${Wc.cs[si][0]} tidak boleh disambung ke ${Wc.cs[Wc.r[lj]][0]}. Kabel yang tertukar bisa korsleting.`;
+    const tk = token; setTimeout(() => { if (tk === token) { Wc.zap = -1; sk2Draw(); } }, 800);
   }
+}
+const sk2Taken = k => (k[0] === 's' && Wc.m[+k.slice(1)] >= 0) || (k[0] === 'l' && Wc.m.includes(+k.slice(1)));
+app.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-d]');
+  if (!b || !Wc || Wc.tk !== token || Wc.m.every(j => j >= 0) || sk2Taken(b.dataset.d)) return;
+  e.preventDefault(); Wc.drag = { k: b.dataset.d, xy: sk2Xy(e) }; b.classList.add('sel'); sk2Tw();
+});
+addEventListener('pointermove', e => { if (Wc && Wc.drag && Wc.tk === token) { Wc.drag.xy = sk2Xy(e); sk2Tw(); } });
+function sk2Up(e) {
+  if (!Wc || !Wc.drag) return;
+  const d = Wc.drag; Wc.drag = null;
+  if (Wc.tk !== token) return;
+  let best = null, bd = 56;   // plug terdekat di sisi seberang (toleransi jari)
+  app.querySelectorAll('[data-d]').forEach(p => {
+    const k = p.dataset.d; if (k[0] === d.k[0] || sk2Taken(k)) return;
+    const r = p.getBoundingClientRect(), dist = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+    if (dist < bd) { bd = dist; best = k; }
+  });
+  if (best) sk2Pair(d.k, best); else Wc.msg = 'Seret kabel sampai ke terminal di seberang ya.';
   sk2Draw();
 }
+addEventListener('pointerup', sk2Up); addEventListener('pointercancel', sk2Up);
 
 /* 3. Saklar Ganda / Dua Arus */
 const LAMP3 = [['A', '#4aa3ff'], ['B', '#ff8a3d']];
@@ -241,7 +262,7 @@ function sk6Draw() {
     : `<path class="w" d="M${x1} 75H${x2}"/>${fl(c) ? `<path class="fl" d="M${x1} 75H${x2}"/>` : ''}`;
   const hit = (c, x, w) => `<rect data-act="sk6f" data-c="${c}" x="${x}" y="30" width="${w}" height="90" fill="transparent"/>`;
   const lit = !f;
-  $('#fs').innerHTML = `<div class="kb"><svg viewBox="0 0 320 150" class="sk" style="position:static;height:auto">
+  $('#fs').innerHTML = `<div class="kb"><svg viewBox="0 28 320 100" class="sk">
     <rect x="8" y="50" width="44" height="50" rx="12" fill="#4a4f72"/><text x="30" y="84" text-anchor="middle" font-size="26">🔋</text>
     ${wire('W1', 52, 108)}
     <rect x="108" y="52" width="60" height="46" rx="12" fill="#3a3f62" stroke="#aab" stroke-width="2"/>
@@ -261,6 +282,59 @@ function sk6Fix(c) {
     Fx.msg = c === 'B' ? 'Baterai baik: arus keluar darinya. Ikuti arusnya, di mana ia berhenti?' : k < fi ? `${FXN[c]} baik-baik saja, arus lewat di sini. Cari tempat arus berhenti.` : `Arus belum sampai ke ${FXN[c].toLowerCase()}. Masalahnya ada sebelum ini.`;
   }
   sk6Draw();
+}
+
+/* ---------- Campur Warna ---------- */
+const PN = { R: ['Merah', '#ff3b3b'], Y: ['Kuning', '#ffd23f'], B: ['Biru', '#2f80ff'], W: ['Putih', '#ffffff'] };
+const MIX = { R: ['Merah', '#ff3b3b'], Y: ['Kuning', '#ffd23f'], B: ['Biru', '#2f80ff'], W: ['Putih', '#f4f4f4'], RY: ['Oranye', '#ff8a1f'], YB: ['Hijau', '#2fc46f'], RB: ['Ungu', '#8a4fe0'],
+  RYB: ['Cokelat', '#7a4a2a'], RW: ['Merah muda', '#ff9bbd'], BW: ['Biru muda', '#9fd0ff'], YW: ['Kuning muda', '#fff0a0'], RYW: ['Krem', '#ffc59a'],
+  YBW: ['Hijau muda', '#9ff0c0'], RBW: ['Ungu muda', '#c9a8ff'], RYBW: ['Cokelat muda', '#c8b8a8'] };
+const mixKey = d => [...'RYBW'].filter(c => d.includes(c)).join('');
+let Cx = null;
+function mixStart() {
+  const young = P().age < 7, pool = young ? ['RY', 'YB', 'RB'] : ['RY', 'YB', 'RB', 'RW', 'BW', 'RYB', 'YBW', 'RBW'];
+  Cx = { young, rs: shuffle(pool).slice(0, young ? 3 : 5), i: 0, fails: 0 };
+  mixRound();
+}
+function mixRound() {
+  Cx.d = []; Cx.tries = 0; Cx.done = false;
+  const t = MIX[Cx.rs[Cx.i]], pal = Cx.young ? 'RYB' : 'RYBW';
+  render(shell(`Campur Warna (${Cx.i + 1}/${Cx.rs.length})`, `<p class="hint">Misi: campurkan cat sampai menjadi warna <b>${t[0]}</b>!</p>
+    <div class="mixrow"><div class="mixcol"><div class="swatch" style="background:${t[1]}"></div><span class="lb">Target</span></div>
+    <div class="mixcol"><div class="cup"><div id="liq" class="liq"></div></div><span class="lb">Campuranmu</span></div></div>
+    <p id="cn" class="small"></p>
+    <div class="paints">${[...pal].map(c => `<button class="paint" style="--k:${PN[c][1]}" data-act="cmadd" data-c="${c}" aria-label="Cat ${PN[c][0]}"><i></i><b>${PN[c][0]}</b></button>`).join('')}</div>
+    <p id="cm" class="fb">Ketuk cat untuk meneteskannya ke cangkir.</p>
+    <div id="cx" class="opts"><button class="opt" data-act="cmclear">🗑 Kosongkan</button><button class="opt" data-act="cmcheck">✔ Cek warna</button></div>`));
+  say2(`Buat warna ${t[0]}!`); mixUpdate();
+}
+function mixUpdate() {
+  const d = Cx.d, m = MIX[mixKey(d)], l = $('#liq');
+  l.style.height = d.length ? (14 + d.length * 13) + '%' : '0%'; if (m) l.style.background = m[1];
+  $('#cn').textContent = d.length ? `Tetes: ${d.map(c => PN[c][0]).join(' + ')}` : 'Cangkir masih kosong';
+}
+function mixAdd(c) {
+  if (Cx.done) return;
+  if (Cx.d.length >= 6) { $('#cm').textContent = 'Cangkir penuh! Cek warnanya atau kosongkan dulu.'; return; }
+  Cx.d.push(c); beep(400 + Cx.d.length * 60, .08); mixUpdate();
+}
+function mixCheck() {
+  if (Cx.done) return;
+  if (!Cx.d.length) { $('#cm').textContent = 'Teteskan cat dulu ya!'; return; }
+  const want = Cx.rs[Cx.i], got = mixKey(Cx.d), t = MIX[want], recipe = [...want].map(c => PN[c][0]).join(' + ');
+  if (got === want) {
+    Cx.done = true; beep(784, .3);
+    $('#cm').textContent = `Berhasil! ${recipe} = ${t[0]} 🎉` + (Cx.young ? ' Merah, kuning, dan biru adalah warna dasar.' : '');
+    $('#cx').innerHTML = '<button class="btn big" style="grid-column:1/-1" data-act="cmnext">Lanjut ▶</button>';
+  } else {
+    Cx.fails++; Cx.tries++; beep(200, .15);
+    $('#cm').textContent = `Campuranmu menjadi ${MIX[got][0]}, belum ${t[0]}. ` + (Cx.tries >= 2 ? `Petunjuk: ${t[0]} dibuat dari ${recipe}.` : 'Coba ubah campurannya!');
+  }
+}
+function mixEnd() {
+  const stars = skStars(Cx.fails);
+  reward('warna', { iq: 3, aq: Math.min(Cx.fails, 4) + 1, stars });
+  result('Pelukis warna!', stars, 'Merah, kuning, dan biru adalah warna dasar. Dua warna dasar yang dicampur menghasilkan warna baru, dan putih membuat warna menjadi lebih muda.', '<button class="btn big" data-act="g_mix">Main lagi</button>');
 }
 
 /* ---------- Planetarium mini ---------- */
@@ -397,10 +471,12 @@ function engLearn() {
 /* ---------- daftar aksi ---------- */
 Object.assign(A, {
   g_puz: gate(puzMenu), puzgo: d => puzStart(+d.n), puzmv: d => puzMove(+d.i),
+  g_mix: gate(mixStart), cmadd(d) { mixAdd(d.c); }, cmclear() { if (!Cx.done) { Cx.d = []; $('#cm').textContent = 'Cangkir dikosongkan.'; mixUpdate(); } }, cmcheck: mixCheck,
+  cmnext() { Cx.i++; if (Cx.i >= Cx.rs.length) mixEnd(); else mixRound(); },
   g_sak: gate(() => { lvl2Back = null; circMenu(); }),
   skmenu() { if (lvl > 2) history.go(2 - lvl); else circMenu(); },
   sk1: skGo(sk1Start), sk1t: sk1Toggle,
-  sk2: skGo(sk2Start), sk2t(d) { sk2Term(d.k); }, sk2n() { Wc.i++; if (Wc.i >= Wc.rs.length) skEnd(2, 'Kabel rapi semua!', skStars(Wc.fails), 'Warna kabel menandai fungsinya. Mencocokkan dengan teliti membuat instalasi rapi dan aman, tidak tertukar.', 2, Math.min(Wc.fails, 4) + 1); else sk2Round(); },
+  sk2: skGo(sk2Start), sk2n() { Wc.i++; if (Wc.i >= Wc.rs.length) skEnd(2, 'Kabel rapi semua!', skStars(Wc.fails), 'Warna kabel menandai fungsinya. Mencocokkan dengan teliti membuat instalasi rapi dan aman, tidak tertukar.', 2, Math.min(Wc.fails, 4) + 1); else sk2Round(); },
   sk3: skGo(sk3Start), sk3t(d) { sk3Toggle(+d.i); }, sk3n() { D3.i++; if (D3.i >= D3.n) skEnd(3, 'Misi saklar ganda selesai!', D3.moves <= D3.n * 4 ? 3 : D3.moves <= D3.n * 7 ? 2 : 1, 'Di rumah, tiap saklar punya jalur terpisah, bahkan dua saklar bisa mengatur satu lampu (seperti di tangga). Mencoba dan mengamati membantu kita memahami jalurnya.', 3, 1); else sk3Round(); },
   sk4: skGo(sk4Start), sk4b(d) { sk4In(d.s); }, sk4n() { Bk.i++; if (Bk.i >= Bk.rs.length) skEnd(4, 'Pola kedip hafal!', skStars(Bk.fails), 'Lampu bisa diatur polanya: kedip pada lampu sein, lampu peringatan, mercusuar, dan lampu pintar. Meniru pola melatih memori kerja.', 3, Math.min(Bk.fails, 4) + 1); else sk4Round(); },
   sk5: skGo(sk5Start), sk5p(d) { sk5Press(+d.i); }, sk5r() { Dt.on = Dt.on.map(() => false); Dt.boom = false; Dt.msg = 'Ayo coba lagi, baca petunjuknya dengan teliti.'; sk5Draw(); },

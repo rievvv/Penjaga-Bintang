@@ -234,7 +234,7 @@ function screenHub() {
       <button class="tile t1" data-act="g_memory">🧠<b>Memori Bintang</b><small>Fokus &amp; ingatan</small></button>
       <button class="tile t2" data-act="g_simon">🌟<b>Pola Bintang</b><small>Konsentrasi &amp; gigih</small></button>
       <button class="tile t6" data-act="g_puz">🧩<b>Puzzle Geser</b><small>3×3, 4×4, 5×5</small></button>
-      <button class="tile t7" data-act="g_sak">💡<b>Saklar Lampu</b><small>6 game listrik</small></button>
+      <button class="tile t11" data-act="g_mix">🎨<b>Campur Warna</b><small>Misi mencampur cat</small></button>
     </div>
     <h3 class="sec">🔤 Bahasa &amp; Hati</h3>
     <div class="menu">
@@ -247,6 +247,7 @@ function screenHub() {
       <button class="tile t9" data-act="g_rain">🌧️<b>Simulasi Hujan</b><small>Siklus air</small></button>
       <button class="tile t3" data-act="g_tanam">🌱<b>Menanam Bibit</b><small>Tumbuhan</small></button>
       <button class="tile t10" data-act="g_trash">♻️<b>Buang Sampah</b><small>Organik, medis, dll</small></button>
+      <button class="tile t7" style="grid-column:1/-1;min-height:100px" data-act="g_sak">💡<b>Saklar Lampu</b><small>6 game listrik</small></button>
     </div>
     <div class="menu" style="margin-top:14px"><button class="tile t5" data-act="g_mis">🏃<b>Misi Dunia Nyata</b><small>Gerak &amp; bantu keluarga</small></button></div>`);
   if (autoVoice()) say(greet);
