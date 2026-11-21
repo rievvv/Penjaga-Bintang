@@ -21,35 +21,30 @@ const Store = {
   save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { /* abaikan */ } }
 };
 let db = Store.load();
-const save = () => { Store.save(db); Cloud.push(cur); };
+const save = fields => { Store.save(db); Cloud.push(cur, fields); };
 Cloud.setGetDb(() => db);
 let tk30 = 0;
-const newProfile = (id, name, age, color) => ({ id, name, age, color, stars: 0, iq: 0, eq: 0, aq: 0, plays: 0, lv: { memory: 1 }, log: [], sec: {}, missions: {}, bonus: {} });
-
-async function hashPin(p) {
-  try {
-    if (window.crypto && crypto.subtle) {
-      const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('pb:' + p));
-      return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
-    }
-  } catch (e) { /* jatuh ke bawah */ }
-  return 'plain:' + p;
-}
+const newProfile = (id, name, age, color, sex) => ({ id, name, age, color, sex: sex || (id === 'rara' ? 'f' : 'm'), limit: null, stars: 0, spent: 0, iq: 0, eq: 0, aq: 0, plays: 0, lv: { memory: 1 }, log: [], sec: {}, missions: {}, bonus: {}, hist: {}, redeems: [], online: null });
+const balance = p => Math.max(0, (p.stars || 0) - (p.spent || 0));
+const snap = p => { p.hist = p.hist || {}; p.hist[today()] = [p.iq, p.eq, p.aq]; const k = Object.keys(p.hist).sort(); while (k.length > 30) delete p.hist[k.shift()]; };
 
 /* ---------- state global ---------- */
 let cur = null;          // id anak yang sedang bermain
 let token = 0;           // naik tiap render; dipakai membatalkan timer lama
 let countTime = false;   // apakah waktu layar dihitung
 let tick = null;
-let pinCb = null;
+let role = null;         // 'parent' | 'child' | null
+let view = '';           // layar aktif khusus (mis. 'parent')
+let nowGame = '';        // game yang sedang dimainkan anak (dilihat orang tua)
+let lvl1 = null;         // fungsi untuk menggambar ulang layar level 1
 let deferredInstall = null;
 const P = () => db.profiles[cur];
 const autoVoice = () => !!cur && P().age < 7;
-const allowedMin = p => db.limitMin + ((p.bonus && p.bonus[today()]) || 0);
+const allowedMin = p => (p.limit != null ? p.limit : db.limitMin) + ((p.bonus && p.bonus[today()]) || 0);
 const usedMin = p => (p.sec[today()] || 0) / 60;
 const isLocked = () => usedMin(P()) >= allowedMin(P());
 
-function render(html) { token++; countTime = true; app.innerHTML = html; window.scrollTo(0, 0); }
+function render(html) { token++; countTime = true; view = ''; app.innerHTML = html; window.scrollTo(0, 0); }
 
 /* ---------- suara ---------- */
 function say(text, lang = 'id-ID') {
@@ -74,7 +69,7 @@ function beep(freq, dur = 0.25) {
 /* ---------- gambar (placeholder, silakan ganti dengan ilustrasimu) ---------- */
 function hero(p, s = 120) {
   if (HERO_IMG[p.id]) return `<img class="heroimg" src="${HERO_IMG[p.id]}" width="${s}" height="${s}" alt="${esc(p.name)}">`;
-  const c = p.color, girl = p.id === 'rara';
+  const c = p.color, girl = p.sex ? p.sex === 'f' : p.id === 'rara';
   const hair = girl
     ? '<path d="M36 40 Q38 16 60 16 Q82 16 84 40 Q72 28 60 28 Q48 28 36 40Z" fill="#3b2a20"/><circle cx="31" cy="44" r="9" fill="#3b2a20"/><circle cx="89" cy="44" r="9" fill="#3b2a20"/>'
     : '<path d="M35 42 Q34 14 60 15 Q86 14 85 42 Q74 26 60 28 Q46 26 35 42Z" fill="#2b2118"/>';
@@ -101,6 +96,8 @@ function kiki(s = 80) {
     <circle cx="42" cy="73" r="4.5" fill="#ff8fa3" opacity=".75"/><circle cx="78" cy="73" r="4.5" fill="#ff8fa3" opacity=".75"/></svg>`;
 }
 const shell = (title, body) => `<header class="bar"><button class="icon" data-act="hub" aria-label="Kembali">←</button><h2>${title}</h2></header><main class="game">${body}</main>`;
+
+const shell1 = (title, body) => `<header class="bar"><button class="icon" data-act="home" aria-label="Kembali">←</button><h2>${title}</h2></header><main class="game">${body}</main>`;
 
 /* ---------- data konten ---------- */
 const PRAISE = ['Kamu gigih sekali! 💪', 'Hebat, kamu terus mencoba!', 'Keren, kamu fokus!', 'Usahamu luar biasa, Penjaga Bintang!', 'Salah itu bagian dari belajar. Kamu hebat!'];
@@ -173,16 +170,26 @@ const MIS_RARA = ['🧸 Rapikan mainanmu', '🌟 Lompat bintang 10 kali', '🤗 
 const MIS_BAIM = ['📖 Baca 1 halaman buku', '💪 Push-up atau sit-up 10 kali', '🧹 Bantu 1 pekerjaan rumah', '✍️ Tulis 3 hal yang kamu syukuri', '🤝 Ajak adik main bareng 10 menit', '💧 Minum 2 gelas air'];
 
 /* ---------- penghitung waktu layar ---------- */
+function ping(off) {
+  const p = role === 'child' && cur && db && db.profiles[cur];
+  if (!p) return;
+  p.online = { t: Date.now(), g: nowGame, off: off ? 1 : 0 };
+  Cloud.push(cur, ['online']);
+}
 function startTick() {
-  stopTick();
+  stopTick(); let n = 0;
   tick = setInterval(() => {
-    if (!cur || !countTime || document.hidden) return;
-    const p = P(), d = today();
+    if (role !== 'child' || !cur || document.hidden) return;
+    const p = P(); if (!p) return;
+    if (++n % 4 === 0) ping();                          // status online tiap ~20 detik
+    if (!countTime) return;
+    if (isLocked()) { if (lvl >= 2) { Cloud.push(cur, ['sec']); screenLock(); } return; }
+    const d = today();
     p.sec[d] = (p.sec[d] || 0) + 5;
     const keys = Object.keys(p.sec).sort();
     while (keys.length > 14) delete p.sec[keys.shift()];
-    Store.save(db); if (++tk30 % 6 === 0) Cloud.push(cur);   // cloud: tiap ~30 detik agar hemat kuota
-    if (isLocked()) { Cloud.push(cur); screenLock(); }
+    Store.save(db); if (++tk30 % 6 === 0) Cloud.push(cur, ['sec']);   // cloud: tiap ~30 detik agar hemat kuota
+    if (isLocked() && lvl >= 2) { Cloud.push(cur, ['sec']); screenLock(); }
   }, 5000);
 }
 function stopTick() { if (tick) clearInterval(tick); tick = null; }
@@ -191,6 +198,7 @@ function stopTick() { if (tick) clearInterval(tick); tick = null; }
 function reward(game, { iq = 0, eq = 0, aq = 0, stars = 1 }) {
   const p = P();
   p.iq += iq; p.eq += eq; p.aq += aq; p.stars += stars; p.plays++;
+  snap(p);
   p.log.push({ d: today(), g: game, s: stars });
   if (p.log.length > 60) p.log.shift();
   save();
@@ -204,59 +212,12 @@ function result(title, stars, note, extra) {
   if (autoVoice()) say(msg);
 }
 
-/* ---------- layar: pengaturan awal, beranda, hub ---------- */
-function screenSetup() {
-  render(`<section class="card center">${kiki(110)}<h1>Pasukan Penjaga Bintang</h1>
-    <p>Halo, Ayah/Bunda! Buat PIN 4 angka untuk area orang tua.</p>
-    <input id="pin1" class="pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
-    <label class="lbl" for="limit">Batas waktu main per hari</label>
-    <select id="limit"><option value="15">15 menit</option><option value="30" selected>30 menit</option><option value="45">45 menit</option><option value="60">60 menit</option></select>
-    <p id="msg" class="msg"></p><button class="btn big" data-act="setupDone">Mulai 🚀</button></section>`);
-}
-function screenHome() {
-  cur = null; stopTick();
-  const ps = Object.values(db.profiles);
-  render(`<header class="top"><h1>Pasukan Penjaga Bintang ✨</h1><p>Siapa yang bertugas hari ini?</p></header>
-    <div class="heroes">${ps.map(p => `<button class="herocard" style="--c:${p.color}" data-act="pick" data-id="${p.id}">${hero(p, 130)}<b>${esc(p.name)}</b><span>⭐ ${p.stars}</span></button>`).join('')}</div>
-    <button class="link" data-act="parent">🔒 Orang Tua</button>
-    <button class="link" data-act="install" ${deferredInstall ? '' : 'hidden'}>📲 Pasang ke layar utama</button>`);
-  countTime = false;
-}
-function screenHub() {
-  if (isLocked()) return screenLock();
-  const p = P();
-  const left = Math.max(0, Math.ceil(allowedMin(p) - usedMin(p)));
-  const greet = p.age < 7 ? `Halo ${p.name}! Pilih misi yang kamu suka.` : `Siap bertugas, ${p.name}? Pilih misimu!`;
-  render(`<header class="hubtop" style="--c:${p.color}">${hero(p, 70)}<div><b>${esc(p.name)}</b><span>⭐ ${p.stars} &nbsp; ⏳ ${left} mnt</span></div><button class="icon" data-act="home" aria-label="Ganti pemain">↩</button></header>
-    <div class="kikirow">${kiki(64)}<p class="bubble">${esc(greet)}</p></div>
-    <h3 class="sec">🧠 Game Otak</h3>
-    <div class="menu">
-      <button class="tile t1" data-act="g_memory">🧠<b>Memori Bintang</b><small>Fokus &amp; ingatan</small></button>
-      <button class="tile t2" data-act="g_simon">🌟<b>Pola Bintang</b><small>Konsentrasi &amp; gigih</small></button>
-      <button class="tile t6" data-act="g_puz">🧩<b>Puzzle Geser</b><small>3×3, 4×4, 5×5</small></button>
-      <button class="tile t11" data-act="g_mix">🎨<b>Campur Warna</b><small>Misi mencampur cat</small></button>
-    </div>
-    <h3 class="sec">🔤 Bahasa &amp; Hati</h3>
-    <div class="menu">
-      <button class="tile t3" data-act="g_eng">🔤<b>Tebak Kata Inggris</b><small>Belajar dulu, lalu soal</small></button>
-      <button class="tile t4" data-act="g_emo">💗<b>Cerita Hati</b><small>Empati &amp; emosi</small></button>
-    </div>
-    <h3 class="sec">🔭 Simulasi Sains</h3>
-    <div class="menu">
-      <button class="tile t8" data-act="g_plan">🪐<b>Planetarium Mini</b><small>Tata surya</small></button>
-      <button class="tile t9" data-act="g_rain">🌧️<b>Simulasi Hujan</b><small>Siklus air</small></button>
-      <button class="tile t3" data-act="g_tanam">🌱<b>Menanam Bibit</b><small>Tumbuhan</small></button>
-      <button class="tile t10" data-act="g_trash">♻️<b>Buang Sampah</b><small>Organik, medis, dll</small></button>
-      <button class="tile t7" style="grid-column:1/-1;min-height:100px" data-act="g_sak">💡<b>Saklar Lampu</b><small>6 game listrik</small></button>
-    </div>
-    <div class="menu" style="margin-top:14px"><button class="tile t5" data-act="g_mis">🏃<b>Misi Dunia Nyata</b><small>Gerak &amp; bantu keluarga</small></button></div>`);
-  if (autoVoice()) say(greet);
-}
+/* ---------- layar waktu habis ---------- */
 function screenLock() {
   render(`<section class="card center">${kiki(110)}<h2>Waktunya istirahat, ${esc(P().name)}!</h2>
     <p>Waktu main hari ini sudah habis. Yuk kerjakan misi di dunia nyata!</p>
     <button class="btn big" data-act="g_mis_force">🏃 Misi Dunia Nyata</button>
-    <button class="btn ghost" data-act="home">Ganti pemain</button></section>`);
+    <button class="btn ghost" data-act="home">Ke menu utama</button></section>`);
   countTime = false;
   if (autoVoice()) say('Waktunya istirahat. Yuk kerjakan misi di dunia nyata!');
 }
@@ -454,7 +415,7 @@ function screenMissions() {
   const keys = Object.keys(p.missions).sort();
   while (keys.length > 14) delete p.missions[keys.shift()];
   const done = p.missions[d];
-  render(shell('Misi Dunia Nyata', `<p class="hint">Kerjakan misinya di dunia nyata, lalu tekan tombolnya!</p>
+  render(shell1('Misi Dunia Nyata', `<p class="hint">Kerjakan misinya di dunia nyata, lalu tekan tombolnya!</p>
     <div class="mlist">${list.map((m, i) => `<button class="mis ${done.includes(i) ? 'done' : ''}" data-act="mis" data-i="${i}">${done.includes(i) ? '✅' : '⬜'} ${esc(m)}</button>`).join('')}</div>
     <p><b>${done.length}/${list.length}</b> misi selesai hari ini ${done.length === list.length ? '🎉 Luar biasa!' : ''}</p>`));
   countTime = false;
@@ -465,183 +426,62 @@ function missionTap(i) {
   if (p.missions[d].includes(i)) return;
   p.missions[d].push(i);
   const all = p.missions[d].length === (p.age < 7 ? MIS_RARA : MIS_BAIM).length;
-  p.stars += all ? 4 : 1; p.aq += 2; save();
+  p.stars += all ? 4 : 1; p.aq += 2; snap(p); save();
   beep(660, 0.15);
   screenMissions();
   if (autoVoice()) say(all ? 'Hebat! Semua misi selesai!' : 'Bagus sekali!');
 }
 
-/* ---------- area orang tua ---------- */
-function askPin(cb) {
-  pinCb = cb;
-  render(`<section class="card center"><h2>🔒 Area Orang Tua</h2>
-    <input id="pin" class="pin" type="password" inputmode="numeric" maxlength="4" placeholder="PIN" autocomplete="off">
-    <p id="msg" class="msg"></p><button class="btn" data-act="pinok">Masuk</button><button class="btn ghost" data-act="home">Batal</button></section>`);
-  countTime = false;
-}
-function last7(p) {
-  const out = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    out.push(Math.round((p.sec[d.toLocaleDateString('sv-SE')] || 0) / 60));
-  }
-  return out;
-}
-function screenParent() {
-  const ps = Object.values(db.profiles), d = today();
-  const cards = ps.map(p => {
-    const w = last7(p), mx = Math.max(10, ...w);
-    const dn = (p.missions[d] || []).length;
-    const bar = (lbl, v) => `<div class="row"><b>${lbl}</b><div class="bar2"><i style="width:${Math.min(100, v)}%"></i></div><span>${v}</span></div>`;
-    return `<article class="pcard" style="--c:${p.color}">
-      <h3>${hero(p, 44)} ${esc(p.name)} • usia <input class="age" type="number" min="3" max="17" value="${p.age}" data-age="${p.id}"></h3>
-      ${bar('IQ', p.iq)}${bar('EQ', p.eq)}${bar('AQ', p.aq)}
-      <p class="small">Poin naik saat anak berlatih. IQ: fokus &amp; kosakata. EQ: empati. AQ: gigih mencoba lagi &amp; misi nyata.</p>
-      <p>⭐ ${p.stars} • Main ${p.plays}× • Hari ini ${Math.round(usedMin(p))}/${allowedMin(p)} mnt • Misi nyata ${dn}</p>
-      <div class="spark" title="Menit main 7 hari terakhir">${w.map(m => `<span style="height:${Math.round(m / mx * 100)}%"></span>`).join('')}</div>
-      <p class="small">Menit main 7 hari terakhir (paling kanan = hari ini)</p>
-      <button class="btn mini" data-act="bonus" data-id="${p.id}">+10 menit hari ini</button><button class="btn mini" data-act="resetscore" data-id="${p.id}">↺ Reset skor</button></article>`;
-  }).join('');
-  render(`<header class="bar"><button class="icon" data-act="home" aria-label="Kembali">←</button><h2>Dashboard Orang Tua</h2></header>
-    ${cards}
-    <div class="tip">💡 <b>Tips:</b> Setelah main, tanya "Bagian mana yang paling seru? Apa yang sulit?" Obrolan 5 menit ini mengubah game menjadi latihan berpikir dan bercerita.</div>
-    <section class="card"><label class="lbl" for="lim">Batas waktu main per hari</label>
-      <select id="lim">${[15, 20, 30, 45, 60].map(m => `<option value="${m}" ${db.limitMin === m ? 'selected' : ''}>${m} menit</option>`).join('')}</select>
-      <button class="btn ghost" data-act="newpin">Ganti PIN</button>
-      ${Cloud.on() ? `<p class="small center">☁️ Tersinkron: ${esc(Cloud.email())}</p><button class="btn ghost" data-act="logout">Keluar akun</button>` : ''}
-      <button class="btn ghost" data-act="export">Unduh data (cadangan)</button>
-      <button class="btn ghost" data-act="reset">Hapus semua data</button></section>`);
-  countTime = false;
-}
-function screenNewPin() {
-  render(`<section class="card center"><h2>Ganti PIN</h2>
-    <input id="pin1" class="pin" type="password" inputmode="numeric" maxlength="4" placeholder="PIN baru" autocomplete="off">
-    <p id="msg" class="msg"></p><button class="btn" data-act="newpinok">Simpan</button><button class="btn ghost" data-act="parentBack">Batal</button></section>`);
-  countTime = false;
-}
-
-/* ---------- akun keluarga (Firebase) ---------- */
-function screenAuth() {
-  cur = null; stopTick();
-  render(`<section class="card center">${kiki(100)}<h1>Masuk Keluarga</h1><p>Satu akun untuk semua HP. Progres Baim &amp; Rara tersinkron otomatis.</p>
-    <label class="lbl" for="em">Email orang tua</label><input id="em" type="email" autocomplete="username">
-    <label class="lbl" for="pw">Kata sandi</label><input id="pw" type="password" autocomplete="current-password">
-    <p id="msg" class="msg"></p><button class="btn big" data-act="login">Masuk</button><button class="btn ghost" data-act="register">Buat akun baru</button></section>`);
-  countTime = false;
-}
-async function authDo(fn) {
-  const em = $('#em').value.trim(), pw = $('#pw').value;
-  if (!em || !pw) { $('#msg').textContent = 'Isi email dan kata sandi'; return; }
-  $('#msg').textContent = 'Memproses…';
-  try { await fn(em, pw); await afterLogin(); } catch (e) { $('#msg').textContent = Cloud.err(e); }
-}
-async function afterLogin() {
-  const remote = await Cloud.pull();             // undefined = gagal/offline, null = belum ada data
-  if (remote && remote.profiles) { db = remote; Store.save(db); }
-  else if (remote === null && db && db.profiles) Cloud.push(null);   // unggah data lokal pertama kali
-  Cloud.listen(r => {
-    if (!db || !db.profiles) { db = r; Store.save(db); return; }
-    Object.keys(r.profiles || {}).forEach(id => { if (id !== cur) db.profiles[id] = r.profiles[id]; });
-    db.limitMin = r.limitMin; db.pinHash = r.pinHash; Store.save(db);
-  });
-  if (!db || !db.profiles) screenSetup(); else screenHome();
-}
-
-/* ---------- aksi (delegasi klik) ---------- */
-let lvl = 0;   // 0 = beranda, 1 = menu/orang tua, 2 = game
-let lvl2Back = null;   // fungsi untuk kembali ke submenu game (mis. menu Saklar) saat swipe kembali
+/* ---------- navigasi & aksi game ---------- */
+// lvl: 0 = dashboard anak, 1 = kategori/misi/reward, 2 = game, 3 = submenu game (mis. Saklar)
+let lvl = 0;
+let lvl2Back = null;   // fungsi untuk kembali ke submenu game saat swipe kembali
 function setLvl(n) { while (lvl < n) history.pushState({ l: ++lvl }, ''); }
 window.addEventListener('popstate', e => {
   lvl = (e.state && e.state.l) || 0;
-  if (!db || !db.profiles || (Cloud.enabled && !Cloud.on())) return;
-  if (lvl === 2 && lvl2Back && cur) return lvl2Back();
+  if (role !== 'child' || !cur) return;
+  if (lvl >= 2 && lvl2Back) return lvl2Back();
   lvl2Back = null;
-  if (lvl >= 1 && cur) screenHub(); else { lvl = 0; screenHome(); }
+  if (lvl >= 1 && lvl1) return lvl1();
+  lvl = 0; lvl1 = null; screenKidHome();
 });
 const gate = fn => () => { if (isLocked()) screenLock(); else { fn(); setLvl(2); } };
+const go1 = fn => { lvl1 = fn; fn(); setLvl(1); };
+const ACT_GAME = {
+  g_memory: 'Memori Bintang', g_simon: 'Pola Bintang', g_puz: 'Puzzle Geser', g_mix: 'Campur Warna', g_eng: 'Tebak Kata Inggris',
+  g_emo: 'Cerita Hati', g_plan: 'Planetarium Mini', g_rain: 'Simulasi Hujan', g_tanam: 'Menanam Bibit', g_trash: 'Buang Sampah',
+  g_sak: 'Saklar Lampu', g_mis: 'Misi Dunia Nyata', g_mis_force: 'Misi Dunia Nyata', g_reward: 'Menukar hadiah'
+};
 const A = {
-  async setupDone() {
-    const pin = $('#pin1').value;
-    if (!/^\d{4}$/.test(pin)) { $('#msg').textContent = 'PIN harus 4 angka'; return; }
-    db = { v: 1, pinHash: await hashPin(pin), limitMin: +$('#limit').value, profiles: {
-      baim: newProfile('baim', 'Super Baim', 8, '#2f80ff'),
-      rara: newProfile('rara', 'Super Rara', 6, '#ff4f9a') } };
-    save(); screenHome();
-  },
-  home() { if (lvl > 0) history.go(-lvl); else screenHome(); },
-  login() { authDo((e, p) => Cloud.signIn(e, p)); },
-  register() { authDo((e, p) => Cloud.register(e, p)); },
-  async logout() { await Cloud.signOut(); screenAuth(); },
-  pick(d) { cur = d.id; startTick(); screenHub(); setLvl(1); },
-  hub() { if (!cur) return screenHome(); if (lvl > 1) history.go(1 - lvl); else screenHub(); },
+  home() { if (lvl > 0) history.go(-lvl); else screenKidHome(); },
+  hub() { if (lvl > 1) history.go(1 - lvl); else if (lvl1) lvl1(); else screenKidHome(); },
   g_memory: gate(() => memoryStart()),
   g_simon: gate(simonStart),
   g_eng: gate(engStart),
   g_emo: gate(emoStart),
-  g_mis() { screenMissions(); setLvl(2); },
-  g_mis_force() { screenMissions(); setLvl(2); },
+  g_mis() { go1(screenMissions); },
+  g_mis_force() { go1(screenMissions); },
   memnext: d => gate(() => memoryStart(+d.lv))(),
   flip(d, b) { memoryFlip(+d.i, b); },
   pad(d) { simonPad(+d.i); },
   engpick(d, b) { engPick(d.w, b); },
   emopick(d, b) { emoPick(+d.n, b); },
   emonext: emoNext,
-  mis(d) { missionTap(+d.i); },
-  parent() { setLvl(1); askPin(screenParent); },
-  parentBack() { screenParent(); },
-  async pinok() {
-    const h = await hashPin($('#pin').value);
-    if (h === db.pinHash) { const cb = pinCb; pinCb = null; if (cb) cb(); }
-    else { $('#msg').textContent = 'PIN salah'; }
-  },
-  resetscore(d) {
-    const p = db.profiles[d.id];
-    if (!confirm(`Reset skor ${p.name}? IQ, EQ, AQ, bintang, dan riwayat main akan kembali ke 0.`)) return;
-    p.iq = p.eq = p.aq = p.stars = p.plays = 0; p.log = [];
-    save(); Cloud.push(d.id); screenParent();
-  },
-  bonus(d) { const p = db.profiles[d.id], k = today(); p.bonus[k] = (p.bonus[k] || 0) + 10; save(); screenParent(); },
-  newpin() { screenNewPin(); },
-  async newpinok() {
-    const pin = $('#pin1').value;
-    if (!/^\d{4}$/.test(pin)) { $('#msg').textContent = 'PIN harus 4 angka'; return; }
-    db.pinHash = await hashPin(pin); save(); screenParent();
-  },
-  export() {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' }));
-    a.download = 'penjaga-bintang-cadangan.json'; document.body.appendChild(a); a.click(); a.remove();
-  },
-  reset() {
-    if (confirm('Hapus SEMUA data (profil, skor, PIN)? Ini tidak bisa dibatalkan.')) {
-      try { localStorage.removeItem(KEY); } catch (e) { /* abaikan */ }
-      location.reload();
-    }
-  },
-  async install() {
-    if (!deferredInstall) return;
-    deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) { /* abaikan */ }
-    deferredInstall = null; screenHome();
-  }
+  mis(d) { missionTap(+d.i); }
 };
 
 app.addEventListener('click', e => {
   const b = e.target.closest('[data-act]');
   if (!b || b.disabled) return;
   const f = A[b.dataset.act];
-  if (f) f(b.dataset, b);
-});
-app.addEventListener('change', e => {
-  const t = e.target;
-  if (t.matches && t.matches('[data-age]')) {
-    const p = db.profiles[t.dataset.age];
-    p.age = Math.max(3, Math.min(17, parseInt(t.value, 10) || p.age)); save();
-  } else if (t.id === 'lim') { db.limitMin = +t.value; save(); }
+  if (!f) return;
+  if (ACT_GAME[b.dataset.act] && role === 'child') { nowGame = ACT_GAME[b.dataset.act]; ping(); }
+  f(b.dataset, b);
 });
 app.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  const b = $('[data-act="pinok"]') || $('[data-act="login"]') || $('[data-act="setupDone"]') || $('[data-act="newpinok"]');
-  if (b && e.target.tagName === 'INPUT') b.click();
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+  const b = $('[data-enter]');
+  if (b) b.click();
 });
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; const b = $('[data-act="install"]'); if (b) b.hidden = false; });
 
@@ -653,11 +493,5 @@ function splash() {
   setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 600); }, 2400);
 }
 history.replaceState({ l: 0 }, '');
-splash();
-(async function boot() {
-  if (!Cloud.enabled) return (!db || !db.profiles) ? screenSetup() : screenHome();
-  const u = await Cloud.ready();
-  if (!u) return screenAuth();
-  afterLogin();
-})();
+splash();   // boot() ada di portal.js
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));

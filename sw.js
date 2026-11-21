@@ -1,6 +1,6 @@
 // Service worker sederhana: cache-first agar aplikasi bisa dibuka offline.
-const V = 'pb-v5';
-const FILES = ['./', './index.html', './styles.css', './app.js', './games2.js', './cloud.js', './sky.js', './firebase-config.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
+const V = 'pb-v6';
+const FILES = ['./', './index.html', './styles.css', './app.js', './games2.js', './portal.js', './cloud.js', './sky.js', './firebase-config.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isChild() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+
+    // Kode anak -> uid keluarga. Hanya bisa DIBUAT (sekali), tidak bisa diubah/dihapus,
+    // sehingga satu kode tidak pernah dipakai dua keluarga. Anak hanya boleh "get" (tidak bisa melihat daftar).
+    match /codes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn() && !isChild() && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /families/{uid} {
+      // orang tua: pemilik dokumen
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      // anak (login anonim dengan kode): boleh membaca dan hanya memperbarui field "profiles"
+      allow get: if isChild();
+      allow update: if isChild()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profiles', 'updated']);
+    }
+  }
+}

@@ -2,31 +2,21 @@
 
 Game edukasi untuk Super Baim (8 th) dan Super Rara (6 th): IQ, EQ, AQ.
 
-## Isi
-- **Game otak:** Memori Bintang, Pola Bintang, Puzzle Geser (3×3, 4×4, 5×5), Saklar Lampu (rangkaian listrik, korsleting & tegangan)
-- **Bahasa & hati:** Tebak Kata Inggris (belajar kata dulu, baru soal), Cerita Hati
-- **Simulasi sains:** Planetarium Mini, Simulasi Hujan, Menanam Bibit, Buang Sampah (organik, anorganik, kertas, medis & B3)
-- Misi Dunia Nyata, batas waktu harian, dashboard orang tua, latar luar angkasa (bintang & komet)
+## Alur pemakaian
+- **Orang tua**: Splash → *Masuk sebagai Orang Tua* → Daftar (email + kata sandi) / Masuk → Dashboard Orang Tua (foto custom, kode anak 6 karakter yang bisa disalin, status online anak & game yang dimainkan, grafik perkembangan, IQ/EQ/AQ, card profil anak + tambah anak, batas jam main per anak, pengaturan Reward).
+- **Anak**: Splash → *Masuk sebagai Anak* → masukkan kode dari orang tua → pilih kartu nama → Dashboard Anak (sisa waktu, bintang, kategori game, Misi Dunia Nyata, Reward).
+- Kode anak dibuat otomatis saat orang tua pertama kali masuk, unik (huruf besar + angka, tanpa 0/O/1/I), dan tidak pernah sama antar keluarga.
+- Menambah game baru: tambahkan entri di `GAMES` dan masukkan id-nya ke `g` pada kategori yang sesuai di `CATS` (`portal.js`), lalu daftarkan aksinya (`g_xxx: gate(fn)`) di `A`.
 
 ## Menyambungkan Firebase (sinkron antar HP)
 1. Firebase Console → buat project → tambah **Web app**, salin config ke `firebase-config.js`.
-2. Build → **Authentication** → aktifkan provider **Email/Password**.
-3. Build → **Firestore Database** → buat database, lalu pasang rules:
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{db}/documents {
-    match /families/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
+2. Build → **Authentication** → aktifkan provider **Email/Password** dan **Anonymous** (Anonymous dipakai untuk login anak).
+3. Build → **Firestore Database** → buat database, lalu tempel isi **`firestore.rules`** ke tab Rules dan Publish.
 4. Authentication → Settings → Authorized domains: tambahkan domain hosting-mu.
-5. Buka aplikasi, "Buat akun baru" di HP pertama, lalu "Masuk" dengan akun yang sama di HP lain.
+5. Buka aplikasi, daftar sebagai orang tua, tambah anak, lalu beri kode ke anak untuk login di HP lain.
 
-Catatan: PIN 4 angka hanya pengunci di aplikasi; keamanan data ada pada akun Firebase. Sinkronisasi butuh internet,
-saat offline aplikasi tetap jalan dan mengirim data begitu online. Jika `apiKey` kosong, aplikasi berjalan lokal saja.
+Catatan: perangkat anak hanya boleh menulis kemajuannya sendiri (bintang, waktu, status online). Siapa pun yang tahu kode bisa membaca data keluarga itu, jadi jaga kerahasiaan kode.
+Sinkronisasi butuh internet; saat offline aplikasi tetap jalan dan mengirim data begitu online.
 
 ## Mencoba
 `python3 -m http.server 8000` lalu buka http://localhost:8000 (untuk HP: hosting HTTPS, mis. Firebase Hosting / GitHub Pages).
