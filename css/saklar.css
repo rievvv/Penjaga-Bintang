@@ -47,10 +47,10 @@
 .plug[data-d] { touch-action: none; cursor: grab; }
 #kb, .krow, .plug { -webkit-touch-callout: none; }
 .t11 { background: linear-gradient(135deg, #ff5d8f, #ffb347 40%, #3ddc84 70%, #4aa3ff); }
-.mixrow { display: flex; justify-content: space-around; align-items: flex-end; margin: 12px 0 4px; }
+.mixrow { display: flex; justify-content: space-around; align-items: flex-end; margin: 22px 0 8px; }
 .mixcol { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .swatch { width: 112px; height: 112px; border-radius: 50%; box-shadow: var(--clay); }
-.cup { width: 132px; height: 150px; border-radius: 16px 16px 44px 44px; position: relative; overflow: hidden; background: rgba(255, 255, 255, .16);
+.mixcol .cup { position: relative; top: auto; left: auto; padding: 0; transition: none; margin-top: 14px; width: 132px; height: 150px; border-radius: 16px 16px 44px 44px; position: relative; overflow: hidden; background: rgba(255, 255, 255, .16);
   box-shadow: inset 6px 6px 12px rgba(255, 255, 255, .35), inset -8px -8px 14px rgba(0, 0, 0, .25), var(--dr); }
 .liq { position: absolute; left: 0; right: 0; bottom: 0; height: 0; transition: height .4s, background .4s; box-shadow: inset 4px 6px 10px rgba(255, 255, 255, .4), inset -4px -6px 10px rgba(0, 0, 0, .2); }
 .paints { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }

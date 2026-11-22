@@ -24,7 +24,7 @@ let db = Store.load();
 const save = fields => { Store.save(db); Cloud.push(cur, fields); };
 Cloud.setGetDb(() => db);
 let tk30 = 0;
-const newProfile = (id, name, age, color, sex) => ({ id, name, age, color, sex: sex || (id === 'rara' ? 'f' : 'm'), limit: null, stars: 0, spent: 0, iq: 0, eq: 0, aq: 0, plays: 0, lv: { memory: 1 }, log: [], sec: {}, missions: {}, bonus: {}, hist: {}, redeems: [], online: null });
+const newProfile = (id, name, age, color, sex) => ({ id, name, age, color, sex: sex || (id === 'rara' ? 'f' : 'm'), limit: null, stars: 0, spent: 0, iq: 0, eq: 0, aq: 0, plays: 0, dq: {}, lv: { memory: 1 }, log: [], sec: {}, missions: {}, bonus: {}, hist: {}, redeems: [], online: null });
 const balance = p => Math.max(0, (p.stars || 0) - (p.spent || 0));
 const snap = p => { p.hist = p.hist || {}; p.hist[today()] = [p.iq, p.eq, p.aq]; const k = Object.keys(p.hist).sort(); while (k.length > 30) delete p.hist[k.shift()]; };
 
@@ -103,18 +103,6 @@ const shell1 = (title, body) => `<header class="bar"><button class="icon" data-a
 const PRAISE = ['Kamu gigih sekali! 💪', 'Hebat, kamu terus mencoba!', 'Keren, kamu fokus!', 'Usahamu luar biasa, Penjaga Bintang!', 'Salah itu bagian dari belajar. Kamu hebat!'];
 const ICONS = ['🚀', '🌙', '⭐', '🪐', '☄️', '👽', '🛸', '🌍', '🔭', '🐱', '🦊', '🐼'];
 const PADS = [{ c: '#ff5b5b', f: 262 }, { c: '#ffd23f', f: 330 }, { c: '#3ddc84', f: 392 }, { c: '#4aa3ff', f: 523 }];
-
-const WORDS = [
-  { e: '🐱', en: 'cat', id: 'kucing', l: 1 }, { e: '🐶', en: 'dog', id: 'anjing', l: 1 }, { e: '🍎', en: 'apple', id: 'apel', l: 1 },
-  { e: '🐟', en: 'fish', id: 'ikan', l: 1 }, { e: '🚗', en: 'car', id: 'mobil', l: 1 }, { e: '🌞', en: 'sun', id: 'matahari', l: 1 },
-  { e: '🌙', en: 'moon', id: 'bulan', l: 1 }, { e: '⭐', en: 'star', id: 'bintang', l: 1 }, { e: '🌳', en: 'tree', id: 'pohon', l: 1 },
-  { e: '📖', en: 'book', id: 'buku', l: 1 }, { e: '🥛', en: 'milk', id: 'susu', l: 1 }, { e: '🍌', en: 'banana', id: 'pisang', l: 1 },
-  { e: '🐦', en: 'bird', id: 'burung', l: 1 }, { e: '💧', en: 'water', id: 'air', l: 1 }, { e: '🏠', en: 'house', id: 'rumah', l: 1 },
-  { e: '🪑', en: 'chair', id: 'kursi', l: 2 }, { e: '🚪', en: 'door', id: 'pintu', l: 2 }, { e: '🌧️', en: 'rain', id: 'hujan', l: 2 },
-  { e: '🚀', en: 'rocket', id: 'roket', l: 2 }, { e: '🦁', en: 'lion', id: 'singa', l: 2 }, { e: '🍞', en: 'bread', id: 'roti', l: 2 },
-  { e: '✏️', en: 'pencil', id: 'pensil', l: 2 }, { e: '🎒', en: 'backpack', id: 'tas', l: 2 }, { e: '🦋', en: 'butterfly', id: 'kupu-kupu', l: 2 },
-  { e: '🧀', en: 'cheese', id: 'keju', l: 2 }, { e: '🚲', en: 'bicycle', id: 'sepeda', l: 2 }, { e: '☁️', en: 'cloud', id: 'awan', l: 2 }
-];
 
 // p: 2 = pilihan terbaik, 1 = lumayan, 0 = kurang tepat (tetap diberi penjelasan yang lembut)
 const EMO_RARA = [
@@ -195,27 +183,19 @@ function startTick() {
 function stopTick() { if (tick) clearInterval(tick); tick = null; }
 
 /* ---------- hadiah ---------- */
-// Game Simulasi Sains: bintang hanya didapat 1x per hari per game (mengulang tetap boleh, tapi tanpa bintang).
-// Kunci mengikuti nama di reward(); 6 permainan Saklar Lampu dihitung sebagai satu game "saklar".
-const DAILY = new Set(['planetarium', 'hujan', 'tanam', 'sampah', 'saklar', 'warna']);
-const gKey = g => /^saklar\d/.test(g) ? 'saklar' : g;
-const gotToday = (p, g) => (p.log || []).some(l => l.d === today() && gKey(l.g) === gKey(g) && l.s > 0);
-let lastCap = false;     // true bila reward() terakhir ditahan karena batas harian
 function reward(game, { iq = 0, eq = 0, aq = 0, stars = 1 }) {
-  const p = P(); lastCap = false;
-  if (DAILY.has(gKey(game)) && gotToday(p, game)) { stars = 0; lastCap = true; }
+  const p = P();
   p.iq += iq; p.eq += eq; p.aq += aq; p.stars += stars; p.plays++;
   snap(p);
-  p.log.push({ d: today(), g: game, s: stars, t: Date.now(), c: lastCap ? 1 : 0 });   // t = waktu, c = bintang ditahan
-  if (p.log.length > 120) p.log.shift();
+  p.log.push({ d: today(), g: game, s: stars });
+  if (p.log.length > 60) p.log.shift();
   save();
-  return stars;
 }
 function result(title, stars, note, extra) {
-  const msg = PRAISE[rnd(PRAISE.length)], cap = lastCap, shown = cap ? 0 : stars; lastCap = false;
+  const msg = PRAISE[rnd(PRAISE.length)];
   render(`<section class="card center"><div class="confetti">🎉</div>${kiki(96)}<h2>${title}</h2>
-    <div class="stars">${'⭐'.repeat(shown)}${'☆'.repeat(Math.max(0, 3 - shown))}</div>
-    <p><b>${msg}</b></p>${cap ? '<p class="soft">⭐ Bintang game ini sudah kamu dapat hari ini, jadi kali ini tidak ada bintang tambahan. Main lagi besok untuk dapat bintang!</p>' : ''}<p class="small">${note}</p>
+    <div class="stars">${'⭐'.repeat(stars)}${'☆'.repeat(Math.max(0, 3 - stars))}</div>
+    <p><b>${msg}</b></p><p class="small">${note}</p>
     ${extra || ''}<button class="btn ghost" data-act="hub">Kembali ke menu</button></section>`);
   if (autoVoice()) say(msg);
 }
@@ -329,52 +309,6 @@ function simonEnd() {
     '<button class="btn big" data-act="g_simon">Main lagi</button>');
 }
 
-/* ---------- game 3: Tebak Kata Inggris ---------- */
-let E = null;
-function engStart() {
-  const young = P().age < 7;
-  const pool = young ? WORDS.filter(w => w.l === 1) : WORDS;
-  E = { qs: shuffle(pool).slice(0, young ? 6 : 8), i: 0, ok: 0, wrong: 0, first: true, young, pool, tk: 0, cur: null, done: false };
-  engLearn();
-}
-function engQ() {
-  const w = E.qs[E.i];
-  const opts = shuffle([w, ...shuffle(E.pool.filter(x => x.en !== w.en)).slice(0, E.young ? 2 : 3)]);
-  E.cur = w; E.first = true; E.done = false;
-  render(shell(`Tebak Kata Inggris (${E.i + 1}/${E.qs.length})`, `<div class="bigemoji">${w.e}</div>
-    <p class="q">Bahasa Inggrisnya <b>${esc(w.id)}</b> apa?</p>
-    <div class="opts">${opts.map(o => `<button class="opt" data-act="engpick" data-w="${o.en}">${o.en}</button>`).join('')}</div>
-    <p id="fb" class="fb"></p>`));
-  E.tk = token;
-  if (autoVoice()) say('Bahasa Inggrisnya ' + w.id + ' apa?');
-}
-function engPick(word, el) {
-  if (!E || E.done || el.disabled) return;
-  say(word, 'en-US');
-  if (word === E.cur.en) {
-    if (E.first) E.ok++;
-    E.done = true; el.classList.add('right');
-    $('#fb').textContent = `Betul! ${E.cur.en} = ${E.cur.id} 🎉`;
-    const tk = E.tk;
-    setTimeout(() => {
-      if (!E || E.tk !== tk || tk !== token) return;
-      E.i++;
-      if (E.i >= E.qs.length) engEnd(); else engQ();
-    }, 1500);
-  } else {
-    E.first = false; E.wrong++;
-    el.classList.add('wrong'); el.disabled = true;
-    $('#fb').textContent = 'Hampir! Coba lagi 💪';
-  }
-}
-function engEnd() {
-  const acc = E.ok / E.qs.length;
-  const stars = acc >= 0.8 ? 3 : acc >= 0.5 ? 2 : 1;
-  reward('english', { iq: E.ok + 1, aq: Math.min(E.wrong, 4), stars });
-  result('Misi bahasa selesai!', stars, `Benar di percobaan pertama: ${E.ok} dari ${E.qs.length}. Main lagi untuk mengenal kata-kata baru!`,
-    '<button class="btn big" data-act="g_eng">Main lagi</button>');
-}
-
 /* ---------- game 4: Cerita Hati ---------- */
 let C = null;
 function emoStart() {
@@ -434,9 +368,7 @@ function missionTap(i) {
   if (p.missions[d].includes(i)) return;
   p.missions[d].push(i);
   const all = p.missions[d].length === (p.age < 7 ? MIS_RARA : MIS_BAIM).length;
-  const got = all ? 4 : 1; p.stars += got; p.aq += 2; snap(p);
-  p.log.push({ d, g: 'misi', s: got, t: Date.now(), c: 0 }); if (p.log.length > 120) p.log.shift();
-  save();
+  p.stars += all ? 4 : 1; p.aq += 2; snap(p); save();
   beep(660, 0.15);
   screenMissions();
   if (autoVoice()) say(all ? 'Hebat! Semua misi selesai!' : 'Bagus sekali!');
@@ -458,7 +390,7 @@ window.addEventListener('popstate', e => {
 const gate = fn => () => { if (isLocked()) screenLock(); else { fn(); setLvl(2); } };
 const go1 = fn => { lvl1 = fn; fn(); setLvl(1); };
 const ACT_GAME = {
-  g_memory: 'Memori Bintang', g_simon: 'Pola Bintang', g_puz: 'Puzzle Geser', g_mix: 'Campur Warna', g_eng: 'Tebak Kata Inggris',
+  g_memory: 'Memori Bintang', g_simon: 'Pola Bintang', g_puz: 'Puzzle Geser', g_mix: 'Campur Warna',
   g_emo: 'Cerita Hati', g_plan: 'Planetarium Mini', g_rain: 'Simulasi Hujan', g_tanam: 'Menanam Bibit', g_trash: 'Buang Sampah',
   g_sak: 'Saklar Lampu', g_mis: 'Misi Dunia Nyata', g_mis_force: 'Misi Dunia Nyata', g_reward: 'Menukar hadiah'
 };
@@ -467,14 +399,12 @@ const A = {
   hub() { if (lvl > 1) history.go(1 - lvl); else if (lvl1) lvl1(); else screenKidHome(); },
   g_memory: gate(() => memoryStart()),
   g_simon: gate(simonStart),
-  g_eng: gate(engStart),
   g_emo: gate(emoStart),
   g_mis() { go1(screenMissions); },
   g_mis_force() { go1(screenMissions); },
   memnext: d => gate(() => memoryStart(+d.lv))(),
   flip(d, b) { memoryFlip(+d.i, b); },
   pad(d) { simonPad(+d.i); },
-  engpick(d, b) { engPick(d.w, b); },
   emopick(d, b) { emoPick(+d.n, b); },
   emonext: emoNext,
   mis(d) { missionTap(+d.i); }

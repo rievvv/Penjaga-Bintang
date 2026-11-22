@@ -84,14 +84,3 @@ details summary { cursor: pointer; }
 .rwcard .rwc { color: var(--gold); font-weight: 700; }
 .rwcard .bar2 { width: 100%; }
 .rwcard small { color: var(--muted); }
-
-/* riwayat main anak */
-.hsum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
-.hsum div { background: rgba(0, 0, 0, .22); border-radius: 16px; padding: 10px 4px; text-align: center; }
-.hsum b { display: block; font-size: 1.25rem; color: var(--gold); } .hsum span { font-size: .72rem; color: var(--muted); }
-.hday { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 4px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: .92rem; }
-.hday em { font-style: normal; color: var(--gold); }
-.hrow { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 7px 0; font-size: .92rem; }
-.hrow time { color: var(--muted); font-size: .78rem; } .hrow .hs { font-weight: 700; color: var(--gold); white-space: nowrap; }
-.hrow .hs.zero { color: var(--muted); font-weight: 400; font-size: .78rem; text-align: right; }
-.hback { display: flex; align-items: center; gap: 10px; }

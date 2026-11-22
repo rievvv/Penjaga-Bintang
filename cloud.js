@@ -7,7 +7,7 @@ const Cloud = (() => {
   const cfg = window.FIREBASE_CONFIG || {};
   const enabled = !!(cfg.apiKey && window.firebase);
   // field kemajuan yang boleh ditulis perangkat anak
-  const CF = ['stars', 'spent', 'iq', 'eq', 'aq', 'plays', 'lv', 'log', 'sec', 'missions', 'hist', 'redeems', 'online'];
+  const CF = ['stars', 'spent', 'iq', 'eq', 'aq', 'plays', 'lv', 'log', 'sec', 'missions', 'hist', 'redeems', 'online', 'dq'];
   let auth, fs, user = null, ref = null, unsub = null, timer = null, role = null, getDb = () => null;
   const pend = {};   // id -> true (seluruh profil) | Set(field) | 'del';  '*' = seluruh dokumen; '$' = field tingkat atas
   if (enabled) { firebase.initializeApp(cfg); auth = firebase.auth(); fs = firebase.firestore(); }

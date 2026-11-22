@@ -26,11 +26,12 @@ Service worker memakai jaringan dulu, jadi update langsung terpakai. Tetap naikk
 Memori Bintang (5×5/5×5/5×7/5×8/5×10, kotak ganjil punya ⭐ bonus di tengah), Dimana Aku?, Labirin (soal tebakan ada di `QZ`), Puzzle Geser, Pola Bintang (2×2 sampai 5×6).
 
 ## Struktur file
-`index.html`, `sw.js`, `manifest.webmanifest`, ikon, `firestore.rules`, skrip (`app.js`, `games2.js`, `games3.js`, `games4.js`, `portal.js`, `cloud.js`, `sky.js`) dan folder `css/` (base, game, extras, clay, saklar, portal, games-otak, games-math). `firebase-config.js` milikmu sendiri tidak ikut di paket ini, jangan sampai terhapus dari repository.
+`index.html`, `sw.js`, `manifest.webmanifest`, ikon, `firestore.rules`, skrip (`app.js`, `games2.js`, `games3.js`, `games4.js`, `games5.js`, `portal.js`, `cloud.js`, `sky.js`) dan folder `css/` (base, game, extras, clay, saklar, portal, games-otak, games-math). `firebase-config.js` milikmu sendiri tidak ikut di paket ini, jangan sampai terhapus dari repository.
 
-## Pembaruan terbaru
-- **Riwayat anak**: Dashboard Orang Tua → tab *Anak* → tombol **📜 Riwayat** di kartu anak. Berisi total bintang, bintang hari ini, dan daftar permainan per hari (jam, nama game, bintang). Disimpan di `p.log` (maks. 120 entri: `d` tanggal, `g` game, `s` bintang, `t` waktu, `c` = bintang ditahan batas harian). Misi Dunia Nyata ikut tercatat.
-- **Bintang 1× sehari** untuk semua game *Simulasi Sains* (Planetarium, Hujan, Tanam, Buang Sampah, Saklar Lampu, Campur Warna). Mengulang tetap boleh, tapi tanpa bintang. Saklar Lampu (6 mini-game) dihitung **satu** game. Daftar game ada di `DAILY` (`app.js`). Poin IQ/EQ/AQ tetap bertambah.
-- **Planetarium**: taruh gambar di `assets/planets/` → `sun.svg, mercure.svg, venus.svg, earth.svg, mars.svg, jupiter.svg, saturn.svg, uranus.svg, neptune.svg`. Bila file belum ada, tampil lingkaran warna cadangan. Folder bisa diganti lewat `PLAN_DIR` (`games2.js`). Data popup (orbit, suhu, satelit, fenomena, fun fact) ada di array `BODY`.
-- **Buang Sampah**: 10 sampah sehari-hari, 4 tong (Organik, Anorganik, Kertas, Lainnya), seret & lepas (atau ketuk sampah lalu ketuk tong).
-- **Campur Warna**: 10 misi per permainan.
+## Revisi terbaru
+- **Planetarium**: planet lebih besar; semua planet mengorbit ↺ (berlawanan jarum jam), rotasi poros ↺ kecuali **Venus & Uranus ↻** (terbalik). Detail di `PLN` (`games2.js`).
+- **Campur Warna**: gelas tidak lagi tertimpa gaya `.cup` milik game tempurung.
+- **Bahasa Inggris & Bahasa Arab** (`games5.js`): 120 kartu (hewan 20, buah 20, kendaraan 20, benda sekitar 30, alam 30). Kuota **20 soal/hari per bahasa** (dipakai bersama semua kategori), 1 benar = 1 ⭐, salah tidak bisa dikoreksi. Gambar: lihat `DAFTAR_SVG.md` (`assets/cards/<kategori>/<nama>.svg`).
+- **Agama Islam** (ikon 🕌) — isinya masih "Segera hadir".
+- **Roulette Harian**: 3 putaran/hari, roda berhenti di salah satu kategori, 1 soal wawasan umum, benar +2 ⭐. Bank soal di `RLQ` (`games5.js`).
+- Data harian disimpan di `p.dq` (ikut tersinkron ke Firebase lewat field `dq` di `cloud.js`). `sw.js` dinaikkan ke `pb-v12`.
