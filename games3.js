@@ -167,7 +167,7 @@ function mzStart(L) {
   const goal = d.star ? `Ambil ⭐ dulu, lalu ke 🏁` : d.q ? 'Lewati 3 ❓ dan jawab soalnya, lalu ke 🏁' : 'Tarik garis dari 🚀 sampai 🏁';
   render(shell(`Labirin • Level ${L}`, `<p class="hint" id="mh">${goal}</p><div class="mzw"><svg id="mz" class="mz" viewBox="-.1 -.1 ${n + .2} ${n + .2}"></svg><div id="qzb"></div></div>
     <p class="fb" id="mm"></p><button class="btn ghost" data-act="mzreset">🔄 Ulangi garis</button>`));
-  mzDraw(); say3(goal.replace(/[⭐🏁❓🚀]/g, ''));
+  Z3.tk = token; mzDraw(); say3(goal.replace(/[⭐🏁❓🚀]/g, ''));
 }
 function mzDraw() {
   const z = Z3, n = z.n, m = z.m, cx = i => (i % n) + .5, cy = i => ((i / n) | 0) + .5;

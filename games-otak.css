@@ -1,0 +1,39 @@
+/* ===== Game Otak: level, memori, tempurung, labirin, pola ===== */
+.t12 { background: linear-gradient(135deg, #b06a2c, #e8a85a); }
+.t13 { background: linear-gradient(135deg, #3a7bd5, #00d2ff); }
+.mem.dense { gap: 6px; }
+.mem.dense .mcard { font-size: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+.mem.dense .mcard .back { font-weight: 800; color: #1b1840; line-height: 1; }
+.mcard.joker { display: flex; align-items: center; justify-content: center; background: #fff3a8; box-shadow: var(--clay-w); }
+.mcard .sw { display: inline-block; width: 1.5em; height: 1.5em; border-radius: 50%; box-shadow: inset -3px -4px 6px rgba(0, 0, 0, .25), inset 2px 3px 5px rgba(255, 255, 255, .6); border: 1px solid #0003; }
+.opt small { font-weight: 500; opacity: .8; }
+
+.cups { position: relative; height: 190px; margin: 18px 0 8px; }
+.cup { position: absolute; top: 80px; height: 100px; padding: 0 5px; transition: left var(--d, .6s) ease-in-out, transform calc(var(--d, .6s) / 2) ease-in-out; }
+.cup .shell { position: relative; z-index: 2; display: block; width: 100%; height: 100px; padding: 0; border-radius: 50% 50% 18px 18px / 80% 80% 18px 18px;
+  background: radial-gradient(circle at 35% 25%, #d9a066, #8a5528 70%, #5e3815); box-shadow: inset 5px 6px 10px rgba(255, 255, 255, .3), inset -6px -8px 12px rgba(0, 0, 0, .35), 0 10px 14px rgba(0, 0, 0, .4); transition: transform .45s ease; }
+.cup.up .shell { transform: translateY(-84px); }
+.cup .seed { position: absolute; z-index: 1; left: 50%; bottom: 24px; width: 34px; height: 34px; margin-left: -17px; border-radius: 50%; opacity: 0; transition: opacity .15s;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--k) 55%, color-mix(in srgb, var(--k) 60%, #000)); box-shadow: 0 4px 6px rgba(0, 0, 0, .4); }
+.cup.up .seed { opacity: 1; transition-delay: .2s; }
+.dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: -2px; margin: 0 2px; border: 2px solid #fff; }
+
+.mzw { position: relative; max-width: 440px; margin: 8px auto; }
+.mz { width: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 22px; box-shadow: var(--clay); }
+.mz .mzb { fill: #fff8e1; }
+.mz .mzw2 line { stroke: #4b3fc2; }
+.mz .mzo { stroke: #4b3fc2; }
+.mz .mzp { fill: none; stroke: #ff5d8f; stroke-width: .3; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
+.mz .mzh { fill: #ffd54a; stroke: #fff; stroke-width: .05; }
+.mz .mzi { font-size: .62px; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+.mz .mzi.got { opacity: .25; }
+.qz { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(11, 16, 48, .82); border-radius: 22px; padding: 10px; }
+.qbox { width: 100%; }
+.qbox .bigemoji { font-size: 2.6rem; margin: 0; }
+.qbox .story { margin: 6px 0 10px; font-size: 1.05rem; }
+
+.pg { display: grid; grid-template-columns: repeat(var(--c), 1fr); gap: 8px; width: 100%; max-width: 420px; margin: 14px auto; }
+.pgp { aspect-ratio: 1; border-radius: 22%; background: var(--pc); opacity: .5; font-size: 0; transition: opacity .1s, transform .1s; box-shadow: var(--clay); padding: 0; }
+.pgp.lit { opacity: 1; transform: scale(1.08); box-shadow: 0 0 26px var(--pc), var(--clay); font-size: 1.4rem; }
+.zinfo { text-align: left; padding: 10px 16px; margin: 8px 0; font-size: .98rem; line-height: 1.6; }
+.pz .pt { font-size: clamp(1.1rem, 6vw, 1.6rem); }
