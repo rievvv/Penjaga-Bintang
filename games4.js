@@ -3,7 +3,7 @@
    Dimuat setelah games3.js (memakai lvMenu, lvWin, lvOf, LV, LVD, lvEntry, say3). Seret & lepas benda ke wadah, atau ketuk sebagai cadangan.
    Mesin: tiap level = fungsi (putaran, anakKecil) -> spec {text, zones, tap, onMove, check, asks, draw, btns, onBtn}. */
 let IDC = 0, MD = null, DG = null;
-const R = (a, b) => a + rnd(b - a + 1);
+const RN = (a, b) => a + rnd(b - a + 1);
 const mk = (n, e, t, v) => Array.from({ length: n }, () => ({ id: 'i' + (++IDC), e, t: t || 'x', v: v == null ? 1 : v }));
 const zone = (id, label, o) => Object.assign({ id, label, items: [], cap: null, row: 0 }, o);
 const cnt = z => (z.base || 0) + z.items.filter(i => !i.lk).length;
@@ -26,18 +26,18 @@ function pizza(n, set) {
 
 /* ---------- Penjumlahan ---------- */
 const ADD = {
-  1: (r, y) => { const a = R(3, y ? 6 : 8), b = R(3, y ? 5 : 8); return { text: `Ada ${a} apel dan ${b} apel di meja. Seret semua apel ke keranjang!`,
+  1: (r, y) => { const a = RN(3, y ? 6 : 8), b = RN(3, y ? 5 : 8); return { text: `Ada ${a} apel dan ${b} apel di meja. Seret semua apel ke keranjang!`,
     zones: [zone('a', 'Meja kiri', { items: mk(a, '🍎') }), zone('b', 'Meja kanan', { items: mk(b, '🍎') }), zone('bk', 'Keranjang', { show: 'count', row: 1 })],
     tap: (it, f) => f === 'bk' ? null : 'bk', check: S => S.z.a.items.length || S.z.b.items.length ? 'Masih ada apel di meja. Pindahkan semuanya!' : true,
     asks: [ASK(`${a} + ${b} = ?`, a + b, `${a} + ${b} = ${a + b}. Dua kelompok digabung jadi satu.`)] }; },
-  2: (r, y) => { const a = R(y ? 5 : 6, 9), b = R(2, y ? 3 : 5);
+  2: (r, y) => { const a = RN(y ? 5 : 6, 9), b = RN(2, y ? 3 : 5);
     return { text: `Kotak ini sudah berisi ${a} kue. Seret ${b} kue satuan ke keranjang sambil meneruskan hitungan!`,
       zones: [zone('t', 'Kue satuan', { items: mk(b, '🍪') }), zone('bk', 'Keranjang', { show: 'count', base: a, row: 1, items: [{ id: 'box' + (++IDC), e: `<span class="box">📦<b>${a}</b></span>`, lk: true, v: 0, t: 'box' }] })],
       tap: (it, f) => f === 't' ? 'bk' : null,
       onMove: (it, f, t, S) => { if (t !== 'bk') return ''; const n = cnt(S.z.bk); say3(String(n)); return `Terus hitung: ${a}… ${Array.from({ length: n - a }, (_, i) => a + 1 + i).join(', ')}`; },
       check: S => S.z.t.items.length ? 'Masih ada kue di luar. Hitung terus ya!' : true,
       asks: [ASK(`${a} + ${b} = ?`, a + b, `Mulai dari ${a}, lanjut ${b} kali: hasilnya ${a + b}. Tidak perlu menghitung dari 1!`)] }; },
-  3: (r, y) => { const a = R(y ? 7 : 6, 9), b = R(11 - a, 9), rest = a + b - 10;
+  3: (r, y) => { const a = RN(y ? 7 : 6, 9), b = RN(11 - a, 9), rest = a + b - 10;
     const f1 = zone('f1', 'Wadah 1 (10 kotak)', { cls: 'tf', cap: 10, items: mk(a, '🔵').map(i => (i.lk = true, i)) });
     const f2 = zone('f2', 'Wadah 2', { cls: 'tf', cap: 10, row: 1, accept: (it, S) => S.z.f1.items.length >= 10, reject: 'Isi Wadah 1 sampai penuh (10) dulu!' });
     return { text: `${a} + ${b}: seret ${10 - a} 🔴 dulu untuk memenuhi Wadah 1, sisanya ke Wadah 2.`, zones: [f1, f2, zone('t', 'Sisa', { row: 2, items: mk(b, '🔴') })],
@@ -45,7 +45,7 @@ const ADD = {
       onMove: (it, f, t, S) => S.z.f1.items.length >= 10 ? (S.z.f2.items.length ? `10 + ${S.z.f2.items.length}` : 'Wadah 1 penuh = 10! Sisanya ke Wadah 2.') : '',
       check: S => S.z.t.items.length ? 'Masih ada sisa. Isi Wadah 1 dulu, lalu Wadah 2.' : true,
       asks: [ASK(`${a} + ${b} = 10 + ${rest} = ?`, a + b, `Genapkan ke 10 dulu, lalu tambah ${rest}: 10 + ${rest} = ${a + b}.`)] }; },
-  4: (r, y) => { const ta = R(1, y ? 2 : 3), oa = R(2, 9), tb = R(1, y ? 2 : 3), ob = R(2, 9), A = ta * 10 + oa, B = tb * 10 + ob;
+  4: (r, y) => { const ta = RN(1, y ? 2 : 3), oa = RN(2, 9), tb = RN(1, y ? 2 : 3), ob = RN(2, 9), A = ta * 10 + oa, B = tb * 10 + ob;
     const mkN = (t, o) => [...mk(t, IK, 't', 10), ...mk(o, '🔵', 'o', 1)];
     return { text: `${A} + ${B}: seret semua ikatan 🎁 (10) dan satuan 🔵 ke wadah hasil. Kalau satuan sudah 10, ikat dulu!`,
       zones: [zone('a', `Angka ${A}`, { items: mkN(ta, oa) }), zone('b', `Angka ${B}`, { items: mkN(tb, ob) }), zone('res', 'Wadah hasil', { show: 'sum', row: 1 })],
@@ -54,7 +54,7 @@ const ADD = {
       onBtn: (b, S) => { const z = S.z.res; for (let k = 0; k < 10; k++) z.items.splice(z.items.findIndex(i => i.t === 'o'), 1); z.items.push(...mk(1, IK, 't', 10)); say3('Diikat!'); return 'Sepuluh satuan diikat jadi satu ikatan 🎁!'; },
       check: S => S.z.a.items.length || S.z.b.items.length ? 'Pindahkan semua ke wadah hasil.' : nOf(S.z.res, 'o') >= 10 ? 'Ada 10 satuan atau lebih. Ikat dulu!' : true,
       asks: [ASK(`${A} + ${B} = ?`, A + B, `${ta + tb} ikatan + ${oa + ob > 9 ? 'satuan setelah diikat' : 'satuan'}: ${A + B}.`)] }; },
-  5: (r, y) => { const x = y ? R(12, 29) : R(25, 49), z = y ? R(12, 29) : R(25, 49), p = y ? R(110, 150) : R(110, 190), q = R(25, 60), n1 = R(y ? 12 : 20, 40), n2 = R(15, 35), n3 = R(10, 25);
+  5: (r, y) => { const x = y ? RN(12, 29) : RN(25, 49), z = y ? RN(12, 29) : RN(25, 49), p = y ? RN(110, 150) : RN(110, 190), q = RN(25, 60), n1 = RN(y ? 12 : 20, 40), n2 = RN(15, 35), n3 = RN(10, 25);
     const v = (a, b) => `<div class="vs">${String(a).padStart(4, '\u00a0')}<br>+${String(b).padStart(3, '\u00a0')}<hr></div>`;
     return { text: 'Hitung penjumlahan bersusun dan soal cerita!', asks: [
       ASK(`${x} + ${z} = ?`, x + z, `Satuan dijumlah dulu, lalu puluhan: ${x + z}.`, { html: v(x, z) }), ASK(`${p} + ${q} = ?`, p + q, `Jumlahkan dari satuan, puluhan, lalu ratusan: ${p + q}.`, { html: v(p, q) }),
@@ -64,27 +64,27 @@ const ADD = {
 /* ---------- Pengurangan ---------- */
 const tensOnes = (t, o) => [...mk(t, IK, 't', 10), ...mk(o, '🔵', 'o', 1)];
 const SUB = {
-  1: (r, y) => { const n = y ? 8 : 10, k = R(2, y ? 3 : 4);
+  1: (r, y) => { const n = y ? 8 : 10, k = RN(2, y ? 3 : 4);
     return { text: `Di keranjang ada ${n} jeruk. Ambilkan ${k} jeruk ke piring!`, zones: [zone('bk', 'Keranjang', { show: 'count', items: mk(n, '🍊') }), zone('pl', 'Piring', { show: 'count', row: 1 })],
       tap: (it, f) => f === 'bk' ? 'pl' : 'bk', check: S => S.z.pl.items.length === k ? true : `Piring harus berisi ${k} jeruk.`,
       asks: [ASK(`${n} − ${k} = ?`, n - k, `Diambil ${k}, tersisa ${n - k} di keranjang.`)] }; },
-  2: (r, y) => { const n = R(y ? 8 : 9, 12), t = R(2, y ? 4 : 5), rem = n - t;
+  2: (r, y) => { const n = RN(y ? 8 : 9, 12), t = RN(2, y ? 4 : 5), rem = n - t;
     return { text: `Ada ${n} koin. Setelah diambil, sisanya harus ${rem}. Pindahkan koin ke "Terambil" sampai sisa ${rem}!`,
       zones: [zone('bk', 'Wadah awal', { show: 'count', items: mk(n, '🪙') }), zone('tk', 'Terambil', { show: 'count', row: 1 })],
       tap: (it, f) => f === 'bk' ? 'tk' : 'bk', check: S => cnt(S.z.bk) === rem ? true : `Sisa di wadah awal harus ${rem}.`,
       asks: [ASK(`${n} − ? = ${rem}`, t, `Kamu mengambil ${t} koin: ${n} − ${t} = ${rem}.`)] }; },
-  3: (r, y) => { const a = R(y ? 5 : 6, 9), b = R(2, a - 1);
+  3: (r, y) => { const a = RN(y ? 5 : 6, 9), b = RN(2, a - 1);
     const top = Array.from({ length: a }, (_, i) => zone('u' + i, null, { cls: 'cell', row: 0, accept: () => false, reject: 'Taruh di kotak bawahnya ya.', items: mk(1, '🔵').map(x => (x.lk = true, x)) }));
     const bot = Array.from({ length: a }, (_, i) => zone('s' + i, null, { cls: 'cell', row: 1, cap: 1, accept: (it, S) => i === 0 || S.z['s' + (i - 1)].items.length > 0, reject: 'Pasangkan dari kiri ya.' }));
     return { text: `Ada ${a} bintang biru dan ${b} bintang merah. Pasangkan tiap 🔴 di bawah 🔵, dari kiri!`, zones: [...top, ...bot, zone('t', 'Bintang merah', { row: 2, items: mk(b, '🔴') })],
       tap: (it, f, S) => { if (f !== 't') return null; const k = bot.findIndex(z => !z.items.length); return k < 0 ? null : 's' + k; },
       check: S => S.z.t.items.length ? 'Pasangkan semua bintang merah.' : true,
       asks: [ASK(`Bintang biru lebih banyak berapa dari bintang merah?`, a - b, `${a} − ${b} = ${a - b}. Selisih = bintang biru yang tidak punya pasangan.`)] }; },
-  4: (r, y) => { const ta = R(2, y ? 3 : 5), oa = R(3, 9), tb = R(1, ta - 1), ob = R(1, oa - 1), A = ta * 10 + oa, B = tb * 10 + ob;
+  4: (r, y) => { const ta = RN(2, y ? 3 : 5), oa = RN(3, 9), tb = RN(1, ta - 1), ob = RN(1, oa - 1), A = ta * 10 + oa, B = tb * 10 + ob;
     return { text: `${A} − ${B}: pindahkan ${tb} ikatan 🎁 dan ${ob} satuan 🔵 ke "Dikurangi".`, zones: [zone('bk', `Kantong ${A}`, { show: 'sum', items: tensOnes(ta, oa) }), zone('tk', 'Dikurangi', { show: 'sum', row: 1 })],
       tap: (it, f, S) => f === 'bk' ? (nOf(S.z.tk, it.t) < (it.t === 't' ? tb : ob) ? 'tk' : null) : 'bk', check: S => nOf(S.z.tk, 't') === tb && nOf(S.z.tk, 'o') === ob ? true : `Ambil tepat ${tb} ikatan dan ${ob} satuan.`,
       asks: [ASK(`${A} − ${B} = ?`, A - B, `Puluhan dikurangi puluhan, satuan dikurangi satuan: ${A - B}.`)] }; },
-  5: (r, y) => { const ta = R(1, y ? 2 : 3), oa = R(1, 6), B = R(oa + 1, 9), A = ta * 10 + oa;
+  5: (r, y) => { const ta = RN(1, y ? 2 : 3), oa = RN(1, 6), B = RN(oa + 1, 9), A = ta * 10 + oa;
     return { text: `${A} − ${B}: satuannya kurang! Seret 1 ikatan 🎁 ke "Buka ikatan", lalu ambil ${B} satuan 🔵 ke "Dikurangi".`,
       zones: [zone('bk', `Kantong ${A}`, { show: 'sum', items: tensOnes(ta, oa) }), zone('op', 'Buka ikatan', { row: 1, accept: it => it.t === 't', reject: 'Hanya ikatan yang bisa dibuka.' }),
         zone('tk', 'Dikurangi', { show: 'count', row: 1, accept: it => it.t === 'o', reject: 'Ikatan tidak bisa langsung dikurangi. Buka ikatan dulu!' })],
@@ -96,13 +96,13 @@ const SUB = {
 
 /* ---------- Perkalian ---------- */
 const MUL = {
-  1: (r, y) => { const g = R(2, y ? 3 : 4), p = R(2, y ? 3 : 4);
+  1: (r, y) => { const g = RN(2, y ? 3 : 4), p = RN(2, y ? 3 : 4);
     const bs = Array.from({ length: g }, (_, i) => zone('b' + i, `Keranjang ${i + 1}`, { show: 'count', cap: p }));
     return { text: `Isi tiap keranjang dengan ${p} apel (${g} keranjang).`, zones: [...bs, zone('t', 'Apel', { row: 1, items: mk(g * p, '🍎') })],
       tap: (it, f, S) => { const z = bs.find(x => x.items.length < p); return f === 't' && z ? z.id : null; },
       check: S => S.z.t.items.length || bs.some(z => z.items.length !== p) ? `Tiap keranjang harus berisi ${p} apel.` : true,
       asks: [ASK(`${g} keranjang × ${p} apel: ${g} × ${p} = ?`, g * p, `${g} kelompok yang sama banyak, masing-masing ${p}: ${g * p}.`)] }; },
-  2: (r, y) => { const rw = R(2, y ? 3 : 4), c = R(2, y ? 3 : 4);
+  2: (r, y) => { const rw = RN(2, y ? 3 : 4), c = RN(2, y ? 3 : 4);
     const cells = Array.from({ length: rw * c }, (_, i) => zone('c' + i, null, { cls: 'cell', row: (i / c) | 0, cap: 1 }));
     return { text: `Susun balok menjadi ${rw} baris × ${c} kolom.`, zones: [...cells, zone('t', 'Balok', { row: rw, items: mk(rw * c, '🟦') })],
       tap: (it, f) => { const z = cells.find(x => !x.items.length); return f === 't' && z ? z.id : null; },
@@ -116,29 +116,29 @@ const MUL = {
       check: S => slots.every(z => z.items.length) ? true : 'Isi semua gerbong.',
       asks: [ASK(`Lima lompatan, tiap lompatan ${k}. ${k} × 5 = ?`, k * 5, `Melompat ${k}-${k} sebanyak 5 kali sampai ${k * 5}.`)] }; },
   4: (r, y) => { const T = y ? [2, 5, 10] : [2, 3, 4, 5, 10];
-    return { text: 'Jawab perkalian. Tidak ada batas waktu, santai saja! Kalau ragu, pakai bantuan gambar.', asks: Array.from({ length: 5 }, () => { const a = T[rnd(T.length)], b = R(2, y ? 5 : 9);
+    return { text: 'Jawab perkalian. Tidak ada batas waktu, santai saja! Kalau ragu, pakai bantuan gambar.', asks: Array.from({ length: 5 }, () => { const a = T[rnd(T.length)], b = RN(2, y ? 5 : 9);
       return ASK(`${a} × ${b} = ?`, a * b, `${a} × ${b} = ${a * b}.`, { hint: `<div class="grps">${Array.from({ length: a }, () => `<span class="grp">${'🍎'.repeat(b)}</span>`).join('')}</div><p class="small">${a} kelompok, tiap kelompok ${b}.</p>` }); }) }; },
-  5: (r, y) => { const mkP = () => { const t = y ? 1 : R(1, 2), o = R(2, 6), B = R(2, 4), A = t * 10 + o;
+  5: (r, y) => { const mkP = () => { const t = y ? 1 : RN(1, 2), o = RN(2, 6), B = RN(2, 4), A = t * 10 + o;
       const vis = `<div class="grps">${Array.from({ length: B }, () => `<span class="grp">${IK}${'🔵'.repeat(o)}</span>`).join('')}</div>`;
       return [ASK(`${A} × ${B}: berapa ${t * 10} × ${B}?`, t * 10 * B, `${t * 10} × ${B} = ${t * 10 * B}.`, { html: vis }), ASK(`Lalu berapa ${o} × ${B}?`, o * B, `${o} × ${B} = ${o * B}.`), ASK(`${t * 10 * B} + ${o * B} = ?`, A * B, `${A} × ${B} = ${t * 10 * B} + ${o * B} = ${A * B}.`)]; };
-    const A2 = R(12, 18), B2 = R(2, 4);
+    const A2 = RN(12, 18), B2 = RN(2, 4);
     return { text: 'Pecah dulu puluhan dan satuannya, lalu gabungkan!', asks: [...mkP(), ASK(`Satu paket berisi ${A2} permen. Ibu membeli ${B2} paket. Total permen?`, A2 * B2, `${A2} × ${B2} = ${(A2 - A2 % 10) * B2} + ${(A2 % 10) * B2} = ${A2 * B2}.`)] }; }
 };
 
 /* ---------- Pembagian ---------- */
 const DIV = {
-  1: (r, y) => { const n = R(3, y ? 4 : 5) * 2;
+  1: (r, y) => { const n = RN(3, y ? 4 : 5) * 2;
     return { text: `Bagi ${n} biskuit sama rata ke 2 piring.`, zones: [zone('p0', 'Piring 1', { show: 'count' }), zone('p1', 'Piring 2', { show: 'count' }), zone('t', 'Biskuit', { row: 1, items: mk(n, '🍪') })],
       tap: (it, f, S) => f !== 't' ? null : S.z.p0.items.length <= S.z.p1.items.length ? 'p0' : 'p1',
       check: S => S.z.t.items.length ? 'Masih ada biskuit. Bagikan semuanya!' : S.z.p0.items.length !== S.z.p1.items.length ? 'Belum sama rata. Pindahkan agar sama banyak.' : true,
       asks: [ASK(`${n} : 2 = ?`, n / 2, `Dibagi rata, tiap piring dapat ${n / 2}.`)] }; },
-  2: (r, y) => { const per = R(2, y ? 3 : 4), q = R(3, 4), n = per * q;
+  2: (r, y) => { const per = RN(2, y ? 3 : 4), q = RN(3, 4), n = per * q;
     const bs = Array.from({ length: q + 1 }, (_, i) => zone('b' + i, `Keranjang ${i + 1}`, { show: 'count', cap: per }));
     return { text: `Ada ${n} bola. Tiap keranjang muat ${per} bola. Isi keranjang sampai bola habis!`, zones: [...bs, zone('t', 'Bola', { row: 1, items: mk(n, '⚽') })],
       tap: (it, f) => { const z = bs.find(x => x.items.length < per); return f === 't' && z ? z.id : null; },
       check: S => S.z.t.items.length ? 'Masih ada bola yang belum masuk keranjang.' : true,
       asks: [ASK('Berapa keranjang yang terisi penuh?', q, `${n} : ${per} = ${q} keranjang.`)] }; },
-  3: (r, y) => { const mkR = () => { const a = R(2, y ? 5 : 9), b = R(2, y ? 5 : 9), p = a * b;
+  3: (r, y) => { const mkR = () => { const a = RN(2, y ? 5 : 9), b = RN(2, y ? 5 : 9), p = a * b;
       const tri = h => `<div class="tri"><b>${p}</b><div><b>${a}</b><b>${h ? '?' : b}</b></div></div>`;
       return [ASK(`Angka yang hilang di segitiga? ${a} × ? = ${p}`, b, `${a} × ${b} = ${p}.`, { html: tri(true) }), ASK(`${p} : ${b} = ?`, a, `Dari ${a} × ${b} = ${p} kita tahu ${p} : ${b} = ${a}.`, { html: tri(false) }), ASK(`${p} : ${a} = ?`, b, `${p} : ${a} = ${b}. Satu keluarga angka!`, { html: tri(false) })]; };
     return { text: 'Keluarga angka: perkalian dan pembagian saling berhubungan.', asks: mkR() }; },
@@ -148,7 +148,7 @@ const DIV = {
       tap: (it, f, S) => f !== 't' ? null : ps.reduce((m, z) => nOf(z, it.t) < nOf(m, it.t) ? z : m, ps[0]).id,
       check: S => S.z.t.items.length ? 'Masih ada yang belum dibagi.' : ps.every(z => nOf(z, 't') === t / d && nOf(z, 'o') === o / d) ? true : 'Belum sama rata. Tiap piring harus sama.',
       asks: [ASK(`${n} : ${d} = ?`, n / d, `Tiap piring dapat ${t / d} ikatan dan ${o / d} satuan: ${n / d}.`)] }; },
-  5: (r, y) => { const d = R(2, y ? 3 : 4), q = R(2, 3), rm = R(1, d - 1), n = d * q + rm;
+  5: (r, y) => { const d = RN(2, y ? 3 : 4), q = RN(2, 3), rm = RN(1, d - 1), n = d * q + rm;
     const ps = Array.from({ length: d }, (_, i) => zone('p' + i, `Anak ${i + 1}`, { show: 'count' }));
     return { text: `Bagi ${n} permen sama rata ke ${d} anak. Permen yang tidak habis dibagi masuk "Kotak sisa".`, zones: [...ps, zone('s', 'Kotak sisa', { row: 1, show: 'count' }), zone('t', 'Permen', { row: 2, items: mk(n, '🍬') })],
       tap: (it, f, S) => f !== 't' ? null : S.z.t.items.length > rm ? ps.reduce((m, z) => z.items.length < m.items.length ? z : m, ps[0]).id : 's',
@@ -173,7 +173,7 @@ const FRAC = {
       `${n1}/${d1} sama besar dengan ${n2}/${d2} pada loyang yang sama.`, { html: bars([[`${n1}/${d1}`, n1, d1], [`${n2}/${d2}`, n2, d2]]) })) }; },
   5: () => { const asks = [];
     for (let i = 0; i < 4; i++) { const d = [4, 3, 5, 6, 8][rnd(5)], sub = i % 2 === 1; let a, b;
-      if (sub) { a = R(2, d - 1); b = R(1, a - 1); } else { a = R(1, d - 2); b = R(1, d - a - 1); }
+      if (sub) { a = RN(2, d - 1); b = RN(1, a - 1); } else { a = RN(1, d - 2); b = RN(1, d - a - 1); }
       const x = sub ? a - b : a + b;
       asks.push(ASKS(`${a}/${d} ${sub ? '−' : '+'} ${b}/${d} = ?`, `${x}/${d}`, [`${x}/${d * 2}`, `${x + 1}/${d}`], `Penyebutnya sama, jadi hanya ${sub ? 'kurangi' : 'jumlahkan'} pembilangnya: ${x}/${d}.`,
         { html: sub ? bars([[`${a}/${d}`, a, d]]) : bars([[`${a}/${d} + ${b}/${d}`, a, d, b]]) })); }
