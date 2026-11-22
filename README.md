@@ -20,7 +20,10 @@ Sinkronisasi butuh internet; saat offline aplikasi tetap jalan dan mengirim data
 
 ## Mencoba
 `python3 -m http.server 8000` lalu buka http://localhost:8000 (untuk HP: hosting HTTPS, mis. Firebase Hosting / GitHub Pages).
-Setelah mengubah file, naikkan nilai `V` di `sw.js` agar cache diperbarui.
+Service worker memakai jaringan dulu, jadi update langsung terpakai. Tetap naikkan nilai `V` di `sw.js` bila ingin cache lama dibersihkan.
 ## Game Otak (games3.js)
 5 game, masing-masing 5 level. Level 1 terbuka; menang di level N membuka level N+1 (disimpan di `p.lv`), dan bintang yang didapat = nomor level.
 Memori Bintang (5×5/5×5/5×7/5×8/5×10, kotak ganjil punya ⭐ bonus di tengah), Dimana Aku?, Labirin (soal tebakan ada di `QZ`), Puzzle Geser, Pola Bintang (2×2 sampai 5×6).
+
+## Struktur file
+`index.html`, `sw.js`, `manifest.webmanifest`, ikon, `firestore.rules`, skrip (`app.js`, `games2.js`, `games3.js`, `games4.js`, `portal.js`, `cloud.js`, `sky.js`) dan folder `css/` (base, game, extras, clay, saklar, portal, games-otak, games-math). `firebase-config.js` milikmu sendiri tidak ikut di paket ini, jangan sampai terhapus dari repository.
