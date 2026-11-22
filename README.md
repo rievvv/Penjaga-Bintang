@@ -27,3 +27,10 @@ Memori Bintang (5×5/5×5/5×7/5×8/5×10, kotak ganjil punya ⭐ bonus di tenga
 
 ## Struktur file
 `index.html`, `sw.js`, `manifest.webmanifest`, ikon, `firestore.rules`, skrip (`app.js`, `games2.js`, `games3.js`, `games4.js`, `portal.js`, `cloud.js`, `sky.js`) dan folder `css/` (base, game, extras, clay, saklar, portal, games-otak, games-math). `firebase-config.js` milikmu sendiri tidak ikut di paket ini, jangan sampai terhapus dari repository.
+
+## Pembaruan terbaru
+- **Riwayat anak**: Dashboard Orang Tua → tab *Anak* → tombol **📜 Riwayat** di kartu anak. Berisi total bintang, bintang hari ini, dan daftar permainan per hari (jam, nama game, bintang). Disimpan di `p.log` (maks. 120 entri: `d` tanggal, `g` game, `s` bintang, `t` waktu, `c` = bintang ditahan batas harian). Misi Dunia Nyata ikut tercatat.
+- **Bintang 1× sehari** untuk semua game *Simulasi Sains* (Planetarium, Hujan, Tanam, Buang Sampah, Saklar Lampu, Campur Warna). Mengulang tetap boleh, tapi tanpa bintang. Saklar Lampu (6 mini-game) dihitung **satu** game. Daftar game ada di `DAILY` (`app.js`). Poin IQ/EQ/AQ tetap bertambah.
+- **Planetarium**: taruh gambar di `assets/planets/` → `sun.svg, mercure.svg, venus.svg, earth.svg, mars.svg, jupiter.svg, saturn.svg, uranus.svg, neptune.svg`. Bila file belum ada, tampil lingkaran warna cadangan. Folder bisa diganti lewat `PLAN_DIR` (`games2.js`). Data popup (orbit, suhu, satelit, fenomena, fun fact) ada di array `BODY`.
+- **Buang Sampah**: 10 sampah sehari-hari, 4 tong (Organik, Anorganik, Kertas, Lainnya), seret & lepas (atau ketuk sampah lalu ketuk tong).
+- **Campur Warna**: 10 misi per permainan.

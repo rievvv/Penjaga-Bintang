@@ -195,19 +195,27 @@ function startTick() {
 function stopTick() { if (tick) clearInterval(tick); tick = null; }
 
 /* ---------- hadiah ---------- */
+// Game Simulasi Sains: bintang hanya didapat 1x per hari per game (mengulang tetap boleh, tapi tanpa bintang).
+// Kunci mengikuti nama di reward(); 6 permainan Saklar Lampu dihitung sebagai satu game "saklar".
+const DAILY = new Set(['planetarium', 'hujan', 'tanam', 'sampah', 'saklar', 'warna']);
+const gKey = g => /^saklar\d/.test(g) ? 'saklar' : g;
+const gotToday = (p, g) => (p.log || []).some(l => l.d === today() && gKey(l.g) === gKey(g) && l.s > 0);
+let lastCap = false;     // true bila reward() terakhir ditahan karena batas harian
 function reward(game, { iq = 0, eq = 0, aq = 0, stars = 1 }) {
-  const p = P();
+  const p = P(); lastCap = false;
+  if (DAILY.has(gKey(game)) && gotToday(p, game)) { stars = 0; lastCap = true; }
   p.iq += iq; p.eq += eq; p.aq += aq; p.stars += stars; p.plays++;
   snap(p);
-  p.log.push({ d: today(), g: game, s: stars });
-  if (p.log.length > 60) p.log.shift();
+  p.log.push({ d: today(), g: game, s: stars, t: Date.now(), c: lastCap ? 1 : 0 });   // t = waktu, c = bintang ditahan
+  if (p.log.length > 120) p.log.shift();
   save();
+  return stars;
 }
 function result(title, stars, note, extra) {
-  const msg = PRAISE[rnd(PRAISE.length)];
+  const msg = PRAISE[rnd(PRAISE.length)], cap = lastCap, shown = cap ? 0 : stars; lastCap = false;
   render(`<section class="card center"><div class="confetti">🎉</div>${kiki(96)}<h2>${title}</h2>
-    <div class="stars">${'⭐'.repeat(stars)}${'☆'.repeat(Math.max(0, 3 - stars))}</div>
-    <p><b>${msg}</b></p><p class="small">${note}</p>
+    <div class="stars">${'⭐'.repeat(shown)}${'☆'.repeat(Math.max(0, 3 - shown))}</div>
+    <p><b>${msg}</b></p>${cap ? '<p class="soft">⭐ Bintang game ini sudah kamu dapat hari ini, jadi kali ini tidak ada bintang tambahan. Main lagi besok untuk dapat bintang!</p>' : ''}<p class="small">${note}</p>
     ${extra || ''}<button class="btn ghost" data-act="hub">Kembali ke menu</button></section>`);
   if (autoVoice()) say(msg);
 }
@@ -426,7 +434,9 @@ function missionTap(i) {
   if (p.missions[d].includes(i)) return;
   p.missions[d].push(i);
   const all = p.missions[d].length === (p.age < 7 ? MIS_RARA : MIS_BAIM).length;
-  p.stars += all ? 4 : 1; p.aq += 2; snap(p); save();
+  const got = all ? 4 : 1; p.stars += got; p.aq += 2; snap(p);
+  p.log.push({ d, g: 'misi', s: got, t: Date.now(), c: 0 }); if (p.log.length > 120) p.log.shift();
+  save();
   beep(660, 0.15);
   screenMissions();
   if (autoVoice()) say(all ? 'Hebat! Semua misi selesai!' : 'Bagus sekali!');

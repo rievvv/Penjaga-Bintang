@@ -292,8 +292,11 @@ const MIX = { R: ['Merah', '#ff3b3b'], Y: ['Kuning', '#ffd23f'], B: ['Biru', '#2
 const mixKey = d => [...'RYBW'].filter(c => d.includes(c)).join('');
 let Cx = null;
 function mixStart() {
-  const young = P().age < 7, pool = young ? ['RY', 'YB', 'RB'] : ['RY', 'YB', 'RB', 'RW', 'BW', 'RYB', 'YBW', 'RBW'];
-  Cx = { young, rs: shuffle(pool).slice(0, young ? 3 : 5), i: 0, fails: 0 };
+  const young = P().age < 7, total = 10;
+  const pool = young ? ['RY', 'YB', 'RB', 'RYB'] : ['RY', 'YB', 'RB', 'RW', 'BW', 'YW', 'RYB', 'RYW', 'YBW', 'RBW', 'RYBW'];
+  const rs = [];   // 10 misi; untuk anak kecil resep diulang, tapi tidak pernah sama dua kali berturut-turut
+  while (rs.length < total) rs.push(...shuffle(pool).filter(k => k !== rs[rs.length - 1]));
+  Cx = { young, rs: rs.slice(0, total), i: 0, fails: 0 };
   mixRound();
 }
 function mixRound() {
@@ -332,43 +335,142 @@ function mixCheck() {
   }
 }
 function mixEnd() {
-  const stars = skStars(Cx.fails);
+  const stars = Cx.fails === 0 ? 3 : Cx.fails <= 4 ? 2 : 1;   // 10 misi: toleransi salah lebih longgar
   reward('warna', { iq: 3, aq: Math.min(Cx.fails, 4) + 1, stars });
   result('Pelukis warna!', stars, 'Merah, kuning, dan biru adalah warna dasar. Dua warna dasar yang dicampur menghasilkan warna baru, dan putih membuat warna menjadi lebih muda.', '<button class="btn big" data-act="g_mix">Main lagi</button>');
 }
 
 /* ---------- Planetarium mini ---------- */
-const SUN = ['Matahari', '#ffd54a', 'Bintang terdekat dengan Bumi, bukan planet. Cahaya dan panasnya membuat kita bisa hidup.'];
-const PLN = [
-  ['Merkurius', '#b5b5b5', 3, 28, 5, 'Planet terkecil dan terdekat dengan Matahari. Satu tahunnya hanya 88 hari Bumi!'],
-  ['Venus', '#e8c27a', 5, 44, 8, 'Planet terpanas, sekitar 465°C, diselimuti awan tebal. Venus berputar terbalik.'],
-  ['Bumi', '#4aa3ff', 5, 60, 11, 'Rumah kita! Satu-satunya planet yang kita tahu ada kehidupan. Sekitar 70% permukaannya air.'],
-  ['Mars', '#ff6b4a', 4, 76, 16, 'Planet merah karena tanahnya berkarat. Punya gunung tertinggi di tata surya, Olympus Mons.'],
-  ['Jupiter', '#e0a870', 11, 100, 26, 'Planet terbesar. Badai raksasanya, Bintik Merah, sudah terlihat lebih dari 150 tahun.'],
-  ['Saturnus', '#f0d98a', 9, 122, 34, 'Punya cincin indah dari es dan batu. Saturnus sangat ringan, kerapatannya lebih kecil dari air!'],
-  ['Uranus', '#7fe0e6', 6, 140, 44, 'Berputar miring seperti bola menggelinding. Sangat dingin.'],
-  ['Neptunus', '#4a6bff', 6, 154, 52, 'Planet terjauh dengan angin sangat kencang. Satu tahunnya sama dengan 165 tahun Bumi.']];
+// Letakkan 9 gambarmu di folder ini: sun.svg, mercure.svg, venus.svg, earth.svg, mars.svg, jupiter.svg, saturn.svg, uranus.svg, neptune.svg
+const PLAN_DIR = 'assets/planets/';
+// r = jari-jari orbit, d = ukuran gambar, t = detik per putaran (animasi, bukan skala nyata), c = warna cadangan bila gambar belum ada
+const BODY = [
+  { f: 'sun.svg', n: 'Matahari', c: '#ffd54a', d: 52, tipe: 'Bintang', ord: 'Pusat tata surya',
+    v: 'Matahari adalah bintang, bukan planet. Cahaya dan panasnya membuat kita bisa hidup.',
+    i: 'Bintang terdekat dengan Bumi. Cahaya dan panasnya membuat kita bisa hidup.',
+    rows: [['Jenis', 'Bintang (katai kuning)'], ['Suhu', 'Permukaan ±5.500 °C, bagian inti ±15 juta °C'], ['Ukuran', 'Diameter ±109× Bumi'], ['Jarak ke Bumi', '±150 juta km, cahayanya sampai dalam ±8 menit'],
+      ['Satelit alami', 'Tidak ada, justru planet-planet yang mengelilinginya'], ['Orbit', 'Mengelilingi pusat galaksi Bima Sakti, ±230 juta tahun sekali putar']],
+    ph: ['Bintik Matahari: bercak gelap karena suhunya lebih rendah dari sekitarnya', 'Lidah api (prominensa) dan semburan raksasa (flare) yang melontarkan partikel', 'Angin Matahari mengalir ke seluruh tata surya dan memicu aurora di Bumi'],
+    fun: ['99,8% massa seluruh tata surya ada di Matahari', 'Sekitar 1,3 juta Bumi muat di dalamnya', 'Jangan melihat langsung ke Matahari tanpa pelindung mata'] },
+  { f: 'mercure.svg', n: 'Merkurius', c: '#b5b5b5', d: 14, r: 38, t: 5, tipe: 'Planet berbatu', ord: 'Planet ke-1 dari Matahari',
+    v: 'Merkurius planet terkecil dan terdekat dengan Matahari. Satu tahunnya hanya 88 hari Bumi!',
+    i: 'Planet terkecil dan terdekat dengan Matahari.',
+    rows: [['Jarak dari Matahari', '±58 juta km'], ['Orbit (1 tahun)', '88 hari Bumi. Orbitnya paling lonjong dibanding planet lain'], ['Rotasi (1 hari)', 'Berputar sekali ±59 hari Bumi; siang ke siang ±176 hari Bumi'],
+      ['Suhu', 'Siang ±430 °C, malam ±−180 °C'], ['Satelit alami', 'Tidak punya'], ['Diameter', '4.879 km (±38% Bumi)']],
+    ph: ['Hampir tanpa atmosfer, jadi suhu siang dan malamnya sangat jauh berbeda', 'Permukaannya penuh kawah tabrakan, mirip Bulan', 'Es air bisa bertahan di kawah dekat kutub yang tidak pernah terkena sinar Matahari'],
+    fun: ['Satu tahunnya (88 hari) lebih pendek dari satu hari siang-malamnya (176 hari)!', 'Planet tercepat: ±47 km setiap detik', 'Planet terkecil di tata surya'] },
+  { f: 'venus.svg', n: 'Venus', c: '#e8c27a', d: 20, r: 54, t: 8, tipe: 'Planet berbatu', ord: 'Planet ke-2 dari Matahari',
+    v: 'Venus planet terpanas, sekitar 465 derajat. Venus berputar terbalik, jadi Matahari terbit dari barat.',
+    i: 'Planet terpanas di tata surya, diselimuti awan tebal.',
+    rows: [['Jarak dari Matahari', '±108 juta km'], ['Orbit (1 tahun)', '225 hari Bumi'], ['Rotasi (1 hari)', 'Berputar sekali ±243 hari Bumi, arahnya terbalik dari kebanyakan planet'],
+      ['Suhu', '±465 °C di seluruh permukaan, cukup panas untuk melelehkan timbal'], ['Satelit alami', 'Tidak punya'], ['Diameter', '12.104 km (hampir sama dengan Bumi)']],
+    ph: ['Awan tebal asam sulfat menyelimuti seluruh planet', 'Efek rumah kaca ekstrem: atmosfer karbon dioksida, tekanan permukaannya ±92× Bumi', 'Angin di atas awan berputar jauh lebih cepat daripada planetnya sendiri'],
+    fun: ['Lebih panas dari Merkurius, padahal lebih jauh dari Matahari', 'Di Venus, Matahari terbit dari barat', 'Dijuluki bintang kejora karena sangat terang di langit'] },
+  { f: 'earth.svg', n: 'Bumi', c: '#4aa3ff', d: 22, r: 70, t: 11, tipe: 'Planet berbatu', ord: 'Planet ke-3 dari Matahari',
+    v: 'Bumi rumah kita! Satu-satunya planet yang kita tahu ada kehidupan. Bumi punya satu satelit alami, yaitu Bulan.',
+    i: 'Rumah kita! Satu-satunya tempat yang kita tahu ada kehidupan.',
+    rows: [['Jarak dari Matahari', '±150 juta km (1 satuan astronomi)'], ['Orbit (1 tahun)', '365,25 hari, makanya ada tahun kabisat'], ['Rotasi (1 hari)', '±24 jam'],
+      ['Suhu', 'Rata-rata ±15 °C (dari ±−89 °C sampai ±57 °C)'], ['Satelit alami', '1: Bulan (diameternya ±¼ Bumi)'], ['Diameter', '12.742 km']],
+    ph: ['Hujan, angin, dan badai petir karena ada atmosfer dan air', 'Aurora di dekat kutub saat angin Matahari menabrak medan magnet Bumi', 'Pasang surut laut akibat tarikan Bulan', 'Gempa bumi dan gunung berapi'],
+    fun: ['±71% permukaannya tertutup air', 'Sumbu yang miring 23,5° menyebabkan adanya musim', 'Bulan selalu menunjukkan sisi yang sama ke Bumi'] },
+  { f: 'mars.svg', n: 'Mars', c: '#ff6b4a', d: 18, r: 86, t: 16, tipe: 'Planet berbatu', ord: 'Planet ke-4 dari Matahari',
+    v: 'Mars planet merah karena tanahnya berkarat. Punya dua satelit kecil, Phobos dan Deimos.',
+    i: 'Planet merah karena debunya kaya karat besi.',
+    rows: [['Jarak dari Matahari', '±228 juta km'], ['Orbit (1 tahun)', '687 hari Bumi (±1,9 tahun)'], ['Rotasi (1 hari)', '±24 jam 37 menit, hampir sama dengan Bumi'],
+      ['Suhu', 'Rata-rata ±−63 °C, dari ±−140 °C sampai ±20 °C'], ['Satelit alami', '2: Phobos dan Deimos (kecil, bentuknya seperti kentang)'], ['Diameter', '6.779 km (±53% Bumi)']],
+    ph: ['Badai debu bisa menyelimuti seluruh planet selama berbulan-bulan', 'Tudung es di kutub: es air dan es kering (karbon dioksida)', 'Langit siang berwarna oranye kemerahan, sedangkan senjanya kebiruan', 'Gunung Olympus Mons setinggi ±22 km, ±2,5× Gunung Everest'],
+    fun: ['Dulu punya air mengalir. Para ilmuwan mencari tanda kehidupan masa lalu', 'Ngarai Valles Marineris panjangnya ±4.000 km', 'Phobos pelan-pelan mendekati Mars dan suatu saat akan hancur'] },
+  { f: null, n: 'Sabuk Asteroid', c: '#9a8f86', d: 0, r: 109, t: 90, tipe: 'Sabuk batu angkasa', ord: 'Antara Mars dan Jupiter', belt: 1,
+    v: 'Sabuk asteroid ada di antara Mars dan Jupiter. Isinya jutaan batu angkasa yang mengelilingi Matahari.',
+    i: 'Cincin jutaan batu angkasa yang mengelilingi Matahari di antara Mars dan Jupiter.',
+    rows: [['Jarak dari Matahari', '±330 sampai 480 juta km'], ['Orbit (1 tahun)', 'Tiap asteroid mengelilingi Matahari dalam ±3 sampai 6 tahun Bumi'], ['Rotasi (1 hari)', 'Beda-beda, ada yang berputar hanya dalam beberapa jam'],
+      ['Suhu', 'Sangat dingin, kira-kira −70 °C sampai −110 °C'], ['Satelit alami', 'Sebagian asteroid punya bulan kecil, misalnya Ida dengan Dactyl'], ['Ukuran', 'Dari butiran debu sampai Ceres (±940 km)']],
+    ph: ['Asteroid kadang bertabrakan dan pecah menjadi batu-batu kecil', 'Pecahannya bisa jatuh ke Bumi sebagai meteorit', 'Planet katai Ceres menyimpan es air dan garam'],
+    fun: ['Seluruh massanya hanya ±3% massa Bulan', 'Antar asteroid sangat berjauhan, jadi wahana bisa lewat dengan aman, tidak seperti di film', 'Diduga sisa bahan planet yang gagal terbentuk karena tarikan gravitasi Jupiter'] },
+  { f: 'jupiter.svg', n: 'Jupiter', c: '#e0a870', d: 40, r: 138, t: 26, tipe: 'Raksasa gas', ord: 'Planet ke-5 dari Matahari',
+    v: 'Jupiter planet terbesar. Badai raksasanya, Bintik Merah Besar, sudah terlihat lebih dari 150 tahun.',
+    i: 'Planet terbesar di tata surya.',
+    rows: [['Jarak dari Matahari', '±778 juta km'], ['Orbit (1 tahun)', '±11,9 tahun Bumi'], ['Rotasi (1 hari)', '±9 jam 56 menit, hari tercepat di antara semua planet'],
+      ['Suhu', 'Puncak awan ±−110 °C, makin ke dalam makin panas'], ['Satelit alami', 'Lebih dari 90. Empat terbesar: Io, Europa, Ganymede, Callisto'], ['Diameter', '±139.800 km (±11× Bumi)']],
+    ph: ['Bintik Merah Besar: badai raksasa yang sudah terlihat lebih dari 150 tahun', 'Awan berpita cokelat dan putih yang ditiup angin kencang', 'Petir dan aurora raksasa di dekat kutubnya'],
+    fun: ['Sekitar 1.300 Bumi muat di dalam Jupiter', 'Ganymede, satelitnya, lebih besar dari planet Merkurius', 'Io punya gunung berapi paling aktif di tata surya, Europa menyimpan lautan di bawah es'] },
+  { f: 'saturn.svg', n: 'Saturnus', c: '#f0d98a', d: 44, r: 160, t: 34, tipe: 'Raksasa gas', ord: 'Planet ke-6 dari Matahari',
+    v: 'Saturnus punya cincin indah dari es dan batu. Saturnus sangat ringan, kerapatannya lebih kecil dari air!',
+    i: 'Planet bercincin indah yang sangat ringan.',
+    rows: [['Jarak dari Matahari', '±1,43 miliar km'], ['Orbit (1 tahun)', '±29,5 tahun Bumi'], ['Rotasi (1 hari)', '±10 jam 33 menit'],
+      ['Suhu', 'Puncak awan ±−140 °C'], ['Satelit alami', 'Lebih dari 270, terbanyak di tata surya. Terbesar: Titan'], ['Diameter', '±116.500 km (±9× Bumi)']],
+    ph: ['Cincin dari kepingan es dan batu, lebarnya ratusan ribu km tetapi sangat tipis', 'Badai berbentuk segi enam di kutub utaranya', 'Titan punya atmosfer tebal dan danau metana cair; Enceladus menyemburkan geyser es dari lautan di bawah kulitnya'],
+    fun: ['Kerapatannya lebih kecil dari air, jadi (kalau ada bak raksasa) ia akan mengapung', 'Cincinnya diperkirakan akan menghilang dalam ratusan juta tahun', 'Titan lebih besar dari planet Merkurius'] },
+  { f: 'uranus.svg', n: 'Uranus', c: '#7fe0e6', d: 28, r: 176, t: 44, tipe: 'Raksasa es', ord: 'Planet ke-7 dari Matahari',
+    v: 'Uranus berputar miring seperti bola menggelinding. Sangat dingin, sampai minus 224 derajat!',
+    i: 'Planet miring yang sangat dingin.',
+    rows: [['Jarak dari Matahari', '±2,87 miliar km'], ['Orbit (1 tahun)', '±84 tahun Bumi'], ['Rotasi (1 hari)', '±17 jam 14 menit, arahnya terbalik seperti Venus'],
+      ['Suhu', 'Rata-rata ±−195 °C, terendah ±−224 °C (planet terdingin)'], ['Satelit alami', 'Sekitar 29, misalnya Titania, Oberon, Miranda, Ariel, Umbriel'], ['Diameter', '±50.700 km (±4× Bumi)']],
+    ph: ['Sumbunya miring ±98°, sehingga tiap kutub mengalami ±42 tahun terang lalu ±42 tahun gelap', 'Warnanya biru kehijauan karena gas metana', '13 cincin tipis dan gelap mengelilinginya'],
+    fun: ['Planet pertama yang ditemukan dengan teleskop (tahun 1781)', 'Satelit Miranda punya tebing setinggi ±20 km', 'Termasuk planet raksasa es, bukan raksasa gas'] },
+  { f: 'neptune.svg', n: 'Neptunus', c: '#4a6bff', d: 28, r: 190, t: 52, tipe: 'Raksasa es', ord: 'Planet ke-8 dari Matahari',
+    v: 'Neptunus planet terjauh dengan angin sangat kencang. Satu tahunnya sama dengan 165 tahun Bumi.',
+    i: 'Planet terjauh dengan angin tercepat.',
+    rows: [['Jarak dari Matahari', '±4,5 miliar km'], ['Orbit (1 tahun)', '±165 tahun Bumi. Baru sekali mengelilingi Matahari sejak ditemukan (2011)'], ['Rotasi (1 hari)', '±16 jam'],
+      ['Suhu', 'Puncak awan ±−200 °C'], ['Satelit alami', 'Sekitar 16. Terbesar: Triton'], ['Diameter', '±49.200 km (±3,9× Bumi)']],
+    ph: ['Angin tercepat di tata surya, bisa lebih dari 2.000 km per jam', 'Bintik Gelap: badai besar yang muncul lalu menghilang', 'Triton mengorbit berlawanan arah putaran Neptunus dan menyemburkan geyser nitrogen, suhunya ±−235 °C'],
+    fun: ['Ditemukan lewat perhitungan matematika sebelum terlihat di teleskop (1846)', 'Warna birunya yang pekat berasal dari gas metana', 'Triton diduga tangkapan dari Sabuk Kuiper'] }
+];
+const planImg = (b, cx, cy, h) => `<image href="${PLAN_DIR}${b.f}" x="${cx - h}" y="${cy - h}" width="${h * 2}" height="${h * 2}" onerror="this.style.display='none';this.nextElementSibling.style.display=''"/>\
+<circle cx="${cx}" cy="${cy}" r="${h * .85}" fill="${b.c}" style="display:none"/>`;
+function beltDots(O, d0 = 100, span = 18) {
+  let s = 7; const r = () => (s = s * 16807 % 2147483647) / 2147483647;
+  return Array.from({ length: 120 }, () => {
+    const a = r() * 6.2832, d = d0 + r() * span, z = .7 + r() * 1.3, g = 140 + Math.floor(r() * 90);
+    return `<circle cx="${(O + d * Math.cos(a)).toFixed(1)}" cy="${(O + d * Math.sin(a)).toFixed(1)}" r="${z.toFixed(1)}" fill="rgb(${g},${g - 8},${g - 22})"/>`;
+  }).join('');
+}
 let PL = null;
 function planStart() {
-  PL = { seen: new Set(), given: false };
-  const orbits = PLN.map(([n, c, s, r, t], i) => `<circle cx="160" cy="160" r="${r}" fill="none" stroke="#fff3"/>
-    <g class="orb" style="animation-duration:${t}s"><circle cx="${160 + r}" cy="160" r="${s}" fill="${c}"/>${i === 5 ? `<ellipse cx="${160 + r}" cy="160" rx="${s + 6}" ry="2.5" fill="none" stroke="${c}"/>` : ''}<circle cx="${160 + r}" cy="160" r="${s + 9}" fill="transparent" data-act="plansel" data-i="${i}"/></g>`).join('');
-  render(shell('Planetarium Mini', `<p class="hint">Ketuk planet atau namanya untuk mengenalnya!</p>
-    <svg viewBox="0 0 320 320" class="solar" id="solar"><circle cx="160" cy="160" r="16" fill="#ffd54a" style="filter:drop-shadow(0 0 12px #ffb300)"/>
-    <circle cx="160" cy="160" r="26" fill="transparent" data-act="plansel" data-i="-1"/>${orbits}</svg>
-    <div class="chips"><button class="chip" data-act="plansel" data-i="-1"><i style="background:${SUN[1]}"></i>${SUN[0]}</button>${PLN.map((p, i) => `<button class="chip" data-act="plansel" data-i="${i}"><i style="background:${p[1]}"></i>${p[0]}</button>`).join('')}</div>
+  PL = { seen: new Set(), given: false, msg: '' };
+  const O = 205, orbits = BODY.map((b, i) => {
+    if (!b.r) return '';
+    const ring = `<circle cx="${O}" cy="${O}" r="${b.r}" fill="none" stroke="#fff3"${b.belt ? ' stroke-dasharray="2 5"' : ''}/>`;
+    const delay = `animation-delay:-${(b.t * ((i * 0.37) % 1)).toFixed(1)}s`;
+    if (b.belt) return `${ring}<g class="orb" style="animation-duration:${b.t}s;${delay}">${beltDots(O)}</g>\
+<circle cx="${O}" cy="${O}" r="${b.r}" fill="none" stroke="transparent" stroke-width="24" pointer-events="stroke" data-act="plansel" data-i="${i}"/>`;
+    const h = b.d / 2, hit = Math.max(h + 8, 18);
+    return `${ring}<g class="orb" style="animation-duration:${b.t}s;${delay}"><g class="upr" style="animation-duration:${b.t}s;${delay}">${planImg(b, O + b.r, O, h)}\
+<circle cx="${O + b.r}" cy="${O}" r="${hit}" fill="transparent" data-act="plansel" data-i="${i}"/></g></g>`;
+  }).join('');
+  const sun = BODY[0];
+  render(shell('Planetarium Mini', `<p class="hint">Ketuk Matahari, planet, atau sabuk asteroid untuk mengenalnya!</p>
+    <svg viewBox="0 0 410 410" class="solar" id="solar"><g style="filter:drop-shadow(0 0 12px #ffb300)">${planImg(sun, O, O, sun.d / 2)}</g>
+    <circle cx="${O}" cy="${O}" r="30" fill="transparent" data-act="plansel" data-i="0"/>${orbits}</svg>
+    <div class="chips">${BODY.map((b, i) => `<button class="chip" data-act="plansel" data-i="${i}"><i style="background:${b.c}"></i>${b.n}</button>`).join('')}</div>
     <button class="btn ghost" data-act="planpause">⏸ Jeda / ▶ Putar</button>
-    <div class="card" id="pi"><p>Pilih benda langit di atas 🔭</p></div>`));
+    <div class="card" id="pi"></div><div id="pp"></div>`));
+  planInfo();
+}
+function planInfo() {
+  $('#pi').innerHTML = `<p>🔭 Sudah dikenali: <b>${PL.seen.size}</b> dari ${BODY.length} benda langit</p><p class="small">Kenali 4 benda langit untuk mendapat bintang!</p>${PL.msg}`;
 }
 function planSel(i) {
-  const o = i < 0 ? SUN : PLN[i]; PL.seen.add(i);
-  const order = i < 0 ? 'Pusat tata surya' : `Planet ke-${i + 1} dari Matahari`;
-  let extra = '';
-  if (PL.seen.size >= 4 && !PL.given) { PL.given = true; reward('planetarium', { iq: 4, stars: 2 }); extra = '<p class="good">⭐ +2 bintang! Kamu sudah mengenal 4 benda langit.</p>'; }
-  $('#pi').innerHTML = `<h3 style="color:${o[1]}">${o[0]}</h3><p class="small">${order}</p><p>${esc(o[i < 0 ? 2 : 5])}</p>${extra}`;
-  app.querySelectorAll('.chip').forEach((c, k) => c.classList.toggle('on', k === i + 1));
-  say2(o[i < 0 ? 2 : 5]);
+  const b = BODY[i]; PL.seen.add(i);
+  if (PL.seen.size >= 4 && !PL.given) {
+    PL.given = true;
+    const got = reward('planetarium', { iq: 4, stars: 2 }), cap = lastCap; lastCap = false;
+    PL.msg = cap ? '<p class="soft">⭐ Bintang Planetarium sudah kamu dapat hari ini. Besok bisa dapat lagi ya!</p>' : `<p class="good">⭐ +${got} bintang! Kamu sudah mengenal 4 benda langit.</p>`;
+  }
+  const img = b.f ? `<img src="${PLAN_DIR}${b.f}" alt="${esc(b.n)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ppfall'}))">`
+    : `<svg viewBox="0 0 120 120" class="ppbelt" aria-hidden="true">${beltDots(60, 22, 34)}</svg>`;
+  $('#pp').innerHTML = `<div class="pp" data-act="planclose"><article class="ppc" style="--c:${b.c}" role="dialog" aria-modal="true" aria-label="${esc(b.n)}" data-act="ppkeep">
+    <button class="icon ppx" data-act="planclose" aria-label="Tutup">✕</button>
+    <div class="ppimg">${img}</div><h3>${esc(b.n)}</h3><p class="small">${esc(b.tipe)} • ${esc(b.ord)}</p><p>${esc(b.i)}</p>
+    <dl class="ppd">${b.rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+    <h4>🌦️ Fenomena alam</h4><ul>${b.ph.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <h4>✨ Fun fact</h4><ul>${b.fun.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${PL.msg}
+    <button class="btn big" data-act="planclose">Tutup</button></article></div>`;
+  app.querySelectorAll('.chip').forEach((c, k) => c.classList.toggle('on', k === i));
+  planInfo(); say2(b.v);
 }
+function planClose() { const p = $('#pp'); if (p) p.innerHTML = ''; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+addEventListener('keydown', e => { if (e.key === 'Escape' && $('#pp .pp')) planClose(); });
 
 /* ---------- Simulasi hujan (siklus air) ---------- */
 let R = null;
@@ -414,47 +516,77 @@ function tanamDone() {
   result('Tanamanmu tumbuh!', 3, 'Merawat makhluk hidup butuh sabar dan konsisten: tanah, air, dan matahari.', '<button class="btn big" data-act="g_tanam">Tanam lagi</button>');
 }
 
-/* ---------- Buang sampah pintar ---------- */
+/* ---------- Buang sampah pintar (seret & lepas) ---------- */
+// [ikon, nama, warna, penjelasan, keterangan singkat]
 const BINS = {
-  org: ['🍃', 'Organik', '#3ddc84', 'Organik berasal dari makhluk hidup dan bisa membusuk, jadi bisa dijadikan kompos.'],
-  anorg: ['🧴', 'Anorganik', '#ffd23f', 'Anorganik sulit membusuk (plastik, kaleng, kaca) tetapi bisa didaur ulang.'],
-  kertas: ['📰', 'Kertas', '#4aa3ff', 'Kertas bisa didaur ulang menjadi kertas baru. Simpan dalam keadaan kering.'],
-  medis: ['🏥', 'Medis & B3', '#ff5b5b', 'Sampah medis dan B3 (bahan berbahaya) bisa menular atau beracun. Jangan disentuh langsung, minta bantuan orang dewasa dan buang di tempat khusus.']
+  org: ['🍃', 'Organik', '#3ddc84', 'Organik berasal dari makhluk hidup dan bisa membusuk, jadi bisa dijadikan kompos.', 'sisa makanan, daun'],
+  anorg: ['🧴', 'Anorganik', '#ffd23f', 'Anorganik sulit membusuk (plastik, kaleng, kaca) tetapi bisa didaur ulang.', 'plastik, kaleng, kaca'],
+  kertas: ['📰', 'Kertas', '#4aa3ff', 'Kertas bisa didaur ulang menjadi kertas baru. Simpan dalam keadaan kering.', 'koran, kardus'],
+  medis: ['⚠️', 'Lainnya', '#ff5b5b', 'Masker bekas (medis) dan baterai (B3, bahan berbahaya) bisa menular atau beracun. Jangan disentuh langsung, minta bantuan orang dewasa dan buang di tempat khusus.', 'medis & B3']
 };
-const TRASH = [['🍌', 'kulit pisang', 'org'], ['🍎', 'sisa apel', 'org'], ['🥬', 'sisa sayur', 'org'], ['🍂', 'daun kering', 'org'], ['🥚', 'cangkang telur', 'org'],
-  ['🥤', 'botol plastik', 'anorg'], ['🥫', 'kaleng bekas', 'anorg'], ['🛍️', 'kantong plastik', 'anorg'], ['🍾', 'botol kaca', 'anorg'],
-  ['📰', 'koran bekas', 'kertas'], ['📦', 'kardus', 'kertas'], ['📄', 'kertas bekas', 'kertas'],
-  ['😷', 'masker bekas', 'medis'], ['💉', 'jarum suntik', 'medis'], ['🩹', 'perban kotor', 'medis'], ['🔋', 'baterai bekas', 'medis'], ['💊', 'obat kedaluwarsa', 'medis']];
-let W = null;
+// 10 sampah yang sering kita temui sehari-hari
+const TRASH = [['🍌', 'kulit pisang', 'org'], ['🍚', 'sisa nasi', 'org'], ['🥬', 'sisa sayur', 'org'],
+  ['🥤', 'botol plastik', 'anorg'], ['🛍️', 'kantong plastik', 'anorg'], ['🥫', 'kaleng bekas', 'anorg'],
+  ['📦', 'kardus', 'kertas'], ['📰', 'koran bekas', 'kertas'],
+  ['😷', 'masker bekas', 'medis'], ['🔋', 'baterai bekas', 'medis']];
+let W = null, TD = null;
 function trashStart() {
-  const young = P().age < 7, bins = young ? ['org', 'anorg', 'medis'] : Object.keys(BINS);
-  W = { bins, q: shuffle(TRASH.filter(t => bins.includes(t[2]))).slice(0, young ? 6 : 8), i: 0, ok: 0, wrong: 0, first: true, done: false };
-  trashQ();
+  W = { items: shuffle(TRASH).map(t => ({ e: t[0], n: t[1], b: t[2], ok: true, gone: false })), placed: 0, ok: 0, wrong: 0, sel: null, done: false, noClick: false, cnt: { org: 0, anorg: 0, kertas: 0, medis: 0 } };
+  render(shell('Buang Sampah', `<p class="hint">Seret setiap sampah ke tong yang tepat! Sisa: <b id="trl">${W.items.length}</b></p>
+    <div class="tray">${W.items.map((t, i) => `<button class="titem" data-act="trsel" data-i="${i}" aria-label="${esc(t.n)}"><span>${t.e}</span><small>${esc(t.n)}</small></button>`).join('')}</div>
+    <p id="fb" class="fb">Tahan sampahnya, lalu seret ke tong di bawah. (Bisa juga ketuk sampah, lalu ketuk tong.)</p>
+    <div class="tbins">${Object.keys(BINS).map(k => `<button class="tbin" style="--bc:${BINS[k][2]}" data-act="trbin" data-b="${k}" aria-label="Tong ${BINS[k][1]}"><span class="lid"></span><span class="tb">${BINS[k][0]}<em class="cnt">0</em></span><b>${BINS[k][1]}</b><small>${BINS[k][4]}</small></button>`).join('')}</div>`));
+  W.tk = token; say2('Seret setiap sampah ke tong sampah yang tepat!');
 }
-function trashQ() {
-  const t = W.q[W.i]; W.first = true; W.done = false;
-  render(shell(`Buang Sampah (${W.i + 1}/${W.q.length})`, `<div class="bigemoji">${t[0]}</div><p class="q">Ini <b>${t[1]}</b>. Buang ke tempat sampah mana?</p>
-    <div class="opts">${W.bins.map(k => `<button class="bin" style="--bc:${BINS[k][2]}" data-act="trpick" data-b="${k}">${BINS[k][0]}<b>${BINS[k][1]}</b></button>`).join('')}</div><p id="fb" class="fb"></p>`));
-  W.tk = token; say2(`Ini ${t[1]}. Buang ke tempat sampah mana?`);
-}
-function trashPick(b, el) {
-  if (!W || W.done || el.disabled) return;
-  const t = W.q[W.i];
-  if (b === t[2]) {
-    if (W.first) W.ok++;
-    W.done = true; el.classList.add('right'); beep(784, .2);
-    $('#fb').textContent = '✅ ' + BINS[b][3]; say2(BINS[b][3]);
-    const tk = W.tk;
-    setTimeout(() => { if (!W || W.tk !== tk || tk !== token) return; W.i++; if (W.i >= W.q.length) trashEnd(); else trashQ(); }, 2800);
+function trashDrop(i, b) {
+  if (!W || W.done) return;
+  const t = W.items[i]; if (!t || t.gone) return;
+  const el = app.querySelector(`.titem[data-i="${i}"]`), bin = app.querySelector(`.tbin[data-b="${b}"]`), tk = W.tk;
+  W.sel = null; app.querySelectorAll('.titem.sel').forEach(x => x.classList.remove('sel'));
+  const flash = c => { bin.classList.add(c); setTimeout(() => bin.classList.remove(c), 600); };
+  if (b === t.b) {
+    if (t.ok) W.ok++;
+    t.gone = true; W.placed++; el.classList.add('gone'); el.disabled = true;
+    bin.querySelector('.cnt').textContent = ++W.cnt[b]; flash('right'); beep(784, .2);
+    $('#trl').textContent = W.items.length - W.placed;
+    $('#fb').textContent = `✅ ${t.n[0].toUpperCase() + t.n.slice(1)} masuk tong ${BINS[b][1]}. ${BINS[b][3]}`; say2(BINS[b][3]);
+    if (W.placed === W.items.length) { W.done = true; setTimeout(() => { if (W && W.tk === tk && tk === token) trashEnd(); }, 3200); }
   } else {
-    W.first = false; W.wrong++; el.disabled = true; el.classList.add('wrong'); beep(200, .15);
-    $('#fb').textContent = `Belum tepat. ${t[1]} bukan sampah ${BINS[b][1]}. Coba lagi 💪`;
+    t.ok = false; W.wrong++; flash('wrong'); beep(200, .15);
+    $('#fb').textContent = `Belum tepat. ${t.n} bukan sampah ${BINS[b][1]}. Coba tong lain 💪`;
   }
 }
+const trBinAt = (x, y) => { const e = document.elementFromPoint(x, y); return e && e.closest ? e.closest('.tbin') : null; };
+app.addEventListener('pointerdown', e => {
+  const b = e.target.closest('.titem');
+  if (!b || !W || !W.items || W.tk !== token || W.done || b.disabled || e.button > 0) return;
+  e.preventDefault();
+  const r = b.getBoundingClientRect(), g = b.cloneNode(true);
+  g.className = 'titem ghost'; g.removeAttribute('data-act');
+  g.style.cssText = `width:${r.width}px;height:${r.height}px;left:${r.left}px;top:${r.top}px`;
+  document.body.appendChild(g); b.classList.add('lift');
+  TD = { i: +b.dataset.i, el: b, g, ox: e.clientX - r.left, oy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, moved: false };
+});
+addEventListener('pointermove', e => {
+  if (!TD) return;
+  if (!TD.moved && Math.hypot(e.clientX - TD.sx, e.clientY - TD.sy) > 6) TD.moved = true;
+  TD.g.style.left = (e.clientX - TD.ox) + 'px'; TD.g.style.top = (e.clientY - TD.oy) + 'px';
+  const bin = trBinAt(e.clientX, e.clientY);
+  app.querySelectorAll('.tbin').forEach(x => x.classList.toggle('hot', x === bin));
+});
+function trUp(e, cancel) {
+  if (!TD) return;
+  const d = TD; TD = null; d.g.remove(); d.el.classList.remove('lift');
+  app.querySelectorAll('.tbin.hot').forEach(x => x.classList.remove('hot'));
+  if (cancel || !d.moved || !W || W.tk !== token) return;      // ketukan biasa ditangani oleh 'click'
+  W.noClick = true; setTimeout(() => { if (W) W.noClick = false; }, 60);
+  const bin = trBinAt(e.clientX, e.clientY); if (bin) trashDrop(d.i, bin.dataset.b);
+}
+addEventListener('pointerup', e => trUp(e, false)); addEventListener('pointercancel', e => trUp(e, true));
 function trashEnd() {
-  const acc = W.ok / W.q.length, stars = acc >= .8 ? 3 : acc >= .5 ? 2 : 1;
+  const n = W.items.length, acc = W.ok / n, stars = acc >= .8 ? 3 : acc >= .5 ? 2 : 1;
   reward('sampah', { iq: 1, eq: W.ok, aq: Math.min(W.wrong, 4), stars });
-  result('Bumi lebih bersih!', stars, `Benar di percobaan pertama: ${W.ok} dari ${W.q.length}. Memilah sampah membantu daur ulang dan menjaga kesehatan.`, '<button class="btn big" data-act="g_trash">Main lagi</button>');
+  result('Bumi lebih bersih!', stars, `Benar di percobaan pertama: ${W.ok} dari ${n}. Memilah sampah membantu daur ulang dan menjaga kesehatan.`, '<button class="btn big" data-act="g_trash">Main lagi</button>');
 }
 
 /* ---------- Tebak Kata Inggris: fase belajar dulu ---------- */
@@ -485,6 +617,7 @@ Object.assign(A, {
   g_plan: gate(planStart),
   plansel(d) { planSel(+d.i); },
   planpause() { $('#solar').classList.toggle('paused'); },
+  planclose: planClose, ppkeep() { },
   g_rain: gate(rainStart), rainnext: rainNext,
   g_tanam: gate(tanamStart),
   t_soil() { T.soil = 1; beep(300, .1); tanamDraw(); },
@@ -492,7 +625,9 @@ Object.assign(A, {
   t_water() { T.w++; beep(500, .1); tanamDraw(); },
   t_sun() { T.s++; beep(600, .1); tanamDraw(); },
   t_done: tanamDone,
-  g_trash: gate(trashStart), trpick(d, b) { trashPick(d.b, b); },
+  g_trash: gate(trashStart),
+  trsel(d, b) { if (!W || W.noClick || W.done || b.disabled) return; const on = W.sel === +d.i; W.sel = on ? null : +d.i; app.querySelectorAll('.titem').forEach(x => x.classList.toggle('sel', !on && x === b)); if (!on) $('#fb').textContent = 'Sekarang ketuk tong yang tepat 👇'; },
+  trbin(d) { if (!W || W.done) return; if (W.sel == null) { $('#fb').textContent = 'Ketuk atau seret sampahnya dulu ya!'; return; } trashDrop(W.sel, d.b); },
   engsay() { say(E.qs[E.li].en, 'en-US'); },
   englnext() { if (E.li >= E.qs.length - 1) { E.li = 0; engQ(); } else { E.li++; engLearn(); } }
 });

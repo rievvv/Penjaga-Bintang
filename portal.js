@@ -165,10 +165,15 @@ function screenKidHome(quiet) {
     <div class="linkrow"><button class="link" data-act="kidswitch">Ganti anak</button><button class="link" data-act="kidout">Keluar</button></div>`);
   if (!quiet && autoVoice()) say(greet);
 }
+// kunci riwayat/batas harian tiap game Simulasi Sains (sama dengan nama di reward())
+const SIMLOG = { plan: 'planetarium', rain: 'hujan', tanam: 'tanam', trash: 'sampah', sak: 'saklar', mix: 'warna' };
 function screenCat(k) {
   const c = CATS.find(x => x.k === k); nowGame = ''; ping();
   render(shell1(`${c.e} ${c.t}`, c.g.length
-    ? `<div class="menu">${c.g.map(id => { const [a, e, t, s, cl] = GAMES[id]; return `<button class="tile ${cl}" data-act="${a}">${e}<b>${t}</b><small>${s}</small></button>`; }).join('')}</div>`
+    ? `<div class="menu">${c.g.map(id => {
+      const [a, e, t, s, cl] = GAMES[id], sim = c.k === 'sains', got = sim && gotToday(P(), SIMLOG[id]);
+      return `<button class="tile ${cl}" data-act="${a}">${e}<b>${t}</b><small>${s}</small>${sim ? `<small class="dly">${got ? '✅ Bintang hari ini sudah didapat' : '⭐ Bintang hari ini tersedia'}</small>` : ''}</button>`;
+    }).join('')}</div>`
     : `<section class="card center">${kiki(90)}<h2>Segera hadir!</h2><p>Game ${esc(c.t)} sedang disiapkan. Tunggu ya, Penjaga Bintang! 🚧</p></section>`));
 }
 
@@ -248,8 +253,34 @@ function kidCard(p) {
     <p class="small">Hari ini: ${Math.round(usedMin(p))} / ${allowedMin(p)} menit • Misi nyata ${dn}</p>
     ${bar3('IQ', p.iq)}${bar3('EQ', p.eq)}${bar3('AQ', p.aq)}
     <p>⭐ Saldo ${balance(p)} (total ${p.stars}) • Main ${p.plays}×</p>
-    <button class="btn mini" data-act="resetscore" data-id="${p.id}">↺ Reset skor</button><button class="btn mini" data-act="delkid" data-id="${p.id}">🗑 Hapus anak</button></article>`;
+    <button class="btn mini" data-act="khist" data-id="${p.id}">📜 Riwayat</button><button class="btn mini" data-act="resetscore" data-id="${p.id}">↺ Reset skor</button><button class="btn mini" data-act="delkid" data-id="${p.id}">🗑 Hapus anak</button></article>`;
 }
+/* ================= RIWAYAT MAIN ANAK ================= */
+let histId = null;
+const GN = { memory: ['🧠', 'Memori Bintang'], where: ['🥥', 'Dimana Aku?'], maze: ['🌀', 'Labirin'], puz: ['🧩', 'Puzzle Geser'], puzzle: ['🧩', 'Puzzle Geser'], simon: ['🌟', 'Pola Bintang'], pola: ['🌟', 'Pola Bintang'],
+  add: ['➕', 'Penjumlahan'], sub: ['➖', 'Pengurangan'], mul: ['✖️', 'Perkalian'], div: ['➗', 'Pembagian'], frac: ['🍕', 'Pecahan'],
+  english: ['🔤', 'Tebak Kata Inggris'], emosi: ['💗', 'Cerita Hati'], warna: ['🎨', 'Campur Warna'], planetarium: ['🪐', 'Planetarium Mini'], hujan: ['🌧️', 'Simulasi Hujan'],
+  tanam: ['🌱', 'Menanam Bibit'], sampah: ['♻️', 'Buang Sampah'], misi: ['🏃', 'Misi Dunia Nyata'] };
+function gname(g) {
+  const m = /^saklar(\d)$/.exec(g);
+  if (m) return ['💡', 'Saklar: ' + (SK[m[1] - 1] ? SK[m[1] - 1][1] : 'Listrik')];
+  return GN[g] || ['🎮', g];
+}
+const dayLabel = d => d === today() ? 'Hari ini' : new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+function tabHist() {
+  const p = db.profiles[histId]; if (!p) { ptab = 'kids'; return tabKids(); }
+  const log = (p.log || []).slice().reverse(), days = [];
+  log.forEach(l => { let g = days[days.length - 1]; if (!g || g.d !== l.d) { g = { d: l.d, rows: [], s: 0 }; days.push(g); } g.rows.push(l); g.s += l.s || 0; });
+  const tdy = days.find(x => x.d === today());
+  return `<section class="card"><div class="hback"><button class="icon sm" data-act="ptab" data-k="kids" aria-label="Kembali">←</button>${hero(p, 44)}<div><b>Riwayat ${esc(p.name)}</b><br><small class="small">Permainan &amp; bintang yang diperoleh</small></div></div>
+    <div class="hsum"><div><b>⭐ ${p.stars}</b><span>Total bintang</span></div><div><b>⭐ ${tdy ? tdy.s : 0}</b><span>Hari ini</span></div><div><b>${p.plays}×</b><span>Total main</span></div></div>
+    ${days.length ? days.map(g => `<div class="hday"><span>${esc(dayLabel(g.d))}</span><em>⭐ ${g.s}</em></div>${g.rows.map(l => {
+      const [e, n] = gname(l.g), tm = l.t ? new Date(l.t).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '–';
+      return `<div class="hrow"><time>${tm}</time><span>${e} ${esc(n)}</span>${l.s > 0 ? `<span class="hs">⭐ ${l.s}</span>` : `<span class="hs zero">${l.c ? 'bintang harian sudah diambil' : '⭐ 0'}</span>`}</div>`;
+    }).join('')}`).join('') : '<p class="small center">Belum ada riwayat. Ajak anak bermain dulu ya!</p>'}
+    <p class="small">Menampilkan sampai 120 permainan terakhir. Game Simulasi Sains hanya memberi bintang 1× per hari.</p></section>`;
+}
+
 function tabKids() {
   return Object.values(db.profiles).map(kidCard).join('') + `<section class="card"><h3>➕ Tambah Anak</h3>
     <label class="lbl" for="kn">Nama anak</label><input id="kn" maxlength="16" placeholder="Nama">
@@ -284,8 +315,8 @@ function tabAcc() {
 }
 function screenParent() {
   if (!db) return screenWelcome();
-  const body = ptab === 'kids' ? tabKids() : ptab === 'rw' ? tabReward() : ptab === 'acc' ? tabAcc() : tabHome();
-  render(`${pHeader()}<nav class="tabs">${TABS.map(([k, e, t]) => `<button class="${ptab === k ? 'on' : ''}" data-act="ptab" data-k="${k}"><span>${e}</span>${t}</button>`).join('')}</nav>${body}`);
+  const body = ptab === 'hist' ? tabHist() : ptab === 'kids' ? tabKids() : ptab === 'rw' ? tabReward() : ptab === 'acc' ? tabAcc() : tabHome(), act = ptab === 'hist' ? 'kids' : ptab;
+  render(`${pHeader()}<nav class="tabs">${TABS.map(([k, e, t]) => `<button class="${act === k ? 'on' : ''}" data-act="ptab" data-k="${k}"><span>${e}</span>${t}</button>`).join('')}</nav>${body}`);
   view = 'parent'; countTime = false;
 }
 function refreshParent() {
@@ -376,6 +407,7 @@ Object.assign(A, {
   },
   rwno: screenRewards,
 
+  khist(d) { histId = d.id; ptab = 'hist'; screenParent(); window.scrollTo(0, 0); },
   ptab(d) { ptab = d.k; if (d.k !== 'rw') rwEdit = null; screenParent(); },
   cmode(d) { chartMode = d.m; redraw(); },
   async copycode() {
